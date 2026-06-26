@@ -17,7 +17,7 @@ import type { Trabajo, ChecklistItem } from "../api/trabajos";
 import { useTelegramBackButton } from "../lib/TelegramContext";
 import {
   ArrowLeft, Info, Hammer, Package, CheckSquare,
-  Clock, Plus, Trash2, MessageSquare, Paperclip, FileText, Image,
+  Clock, Plus, Trash2, MessageSquare, Paperclip, FileText,
 } from "lucide-react";
 
 // ── Helpers ───────────────────────────────────────────────────
@@ -236,6 +236,7 @@ function ComentariosSection({ trabajoId }: { trabajoId: string }) {
 function AdjuntosSection({ trabajoId }: { trabajoId: string }) {
   const queryClient = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const { data: adjuntos = [] } = useQuery({
     queryKey: ["adjuntos", trabajoId],
@@ -251,11 +252,7 @@ function AdjuntosSection({ trabajoId }: { trabajoId: string }) {
     if (fileRef.current) fileRef.current.value = "";
   };
 
-  const tipoIcon = (tipo?: string) => {
-    if (tipo === "foto") return <Image className="h-4 w-4" />;
-    if (tipo === "pdf") return <FileText className="h-4 w-4" />;
-    return <Paperclip className="h-4 w-4" />;
-  };
+  const esImagen = (tipo?: string) => tipo === "foto";
 
   return (
     <div className="rounded-xl p-3 mt-1" style={{ background: "var(--tg-theme-secondary_bg_color)" }}>
@@ -273,7 +270,7 @@ function AdjuntosSection({ trabajoId }: { trabajoId: string }) {
           style={{ color: "var(--tg-theme-button_color)" }}>
           <Plus className="h-4 w-4" />
         </button>
-        <input ref={fileRef} type="file" onChange={handleUpload} className="hidden" />
+        <input ref={fileRef} type="file" onChange={handleUpload} className="hidden" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.zip" />
       </div>
 
       {adjuntos.length === 0 ? (
@@ -281,25 +278,53 @@ function AdjuntosSection({ trabajoId }: { trabajoId: string }) {
       ) : (
         <div className="grid grid-cols-2 gap-2">
           {adjuntos.map((a) => (
-            <a key={a.id} href={a.url} target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-2 p-2 rounded-lg group relative active:opacity-70"
-              style={{ background: "var(--tg-theme-bg_color)" }}>
-              <span style={{ color: "var(--tg-theme-accent_text_color)" }}>{tipoIcon(a.tipo)}</span>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs truncate" style={{ color: "var(--tg-theme-text_color)" }}>{a.nombre}</p>
+            <div key={a.id}
+              className="relative group rounded-lg overflow-hidden cursor-pointer active:opacity-90"
+              style={{ background: "var(--tg-theme-bg_color)" }}
+              onClick={() => esImagen(a.tipo) ? setPreviewUrl(a.url ?? null) : window.open(a.url, "_blank")}
+            >
+              {esImagen(a.tipo) && a.url ? (
+                <div className="aspect-square">
+                  <img src={a.url} alt={a.nombre} className="w-full h-full object-cover" loading="lazy" />
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 p-3">
+                  <span style={{ color: "var(--tg-theme-accent_text_color)" }}>
+                    {a.tipo === "pdf" ? <FileText className="h-5 w-5" /> : <Paperclip className="h-5 w-5" />}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs truncate" style={{ color: "var(--tg-theme-text_color)" }}>{a.nombre}</p>
+                  </div>
+                </div>
+              )}
+              <div className="absolute bottom-0 left-0 right-0 p-1.5 bg-gradient-to-t from-black/50 to-transparent">
+                <p className="text-xs truncate text-white/90">{a.nombre}</p>
                 {a.tamano && (
-                  <p className="text-xs" style={{ color: "var(--tg-theme-hint_color)" }}>
+                  <p className="text-xs text-white/60">
                     {a.tamano > 1024 * 1024 ? `${(a.tamano / (1024 * 1024)).toFixed(1)} MB` : `${(a.tamano / 1024).toFixed(1)} KB`}
                   </p>
                 )}
               </div>
-              <button onClick={(ev) => { ev.preventDefault(); deleteAdjunto(a.appwrite_id); queryClient.invalidateQueries({ queryKey: ["adjuntos", trabajoId] }); }}
-                className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 p-0.5"
-                style={{ color: "var(--tg-theme-destructive_text_color)" }}>
-                <Trash2 className="h-3 w-3" />
+              <button onClick={(ev) => { ev.stopPropagation(); deleteAdjunto(a.appwrite_id); queryClient.invalidateQueries({ queryKey: ["adjuntos", trabajoId] }); }}
+                className="absolute top-1.5 right-1.5 p-1 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity"
+                style={{ color: "white" }}>
+                <Trash2 className="h-3.5 w-3.5" />
               </button>
-            </a>
+            </div>
           ))}
+        </div>
+      )}
+
+      {/* Lightbox preview */}
+      {previewUrl && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
+          onClick={() => setPreviewUrl(null)}>
+          <button onClick={() => setPreviewUrl(null)}
+            className="absolute top-4 right-4 p-2 rounded-full bg-white/10 text-white active:opacity-70">
+            ✕
+          </button>
+          <img src={previewUrl} alt="Preview" className="max-w-full max-h-[80vh] object-contain rounded-lg"
+            onClick={(e) => e.stopPropagation()} />
         </div>
       )}
     </div>
