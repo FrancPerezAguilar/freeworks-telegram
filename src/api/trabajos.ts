@@ -327,3 +327,25 @@ export async function getChecklistPendiente(): Promise<{ item: ChecklistItem; tr
 
   return result.slice(0, 30);
 }
+
+/** Checklist items pendientes CON fecha de vencimiento (para la agenda) */
+export async function getChecklistConFecha(): Promise<{ item: ChecklistItem; trabajo: Trabajo }[]> {
+  const res = await db.listDocuments(DB, "trabajo_checklist", [
+    Query.equal("completado", false),
+    Query.isNotNull("fecha"),
+    Query.orderAsc("fecha"),
+    Query.limit(50),
+  ]);
+  const items = res.documents.map((d) => normalizeDoc<ChecklistItem>(d as AppwriteDoc));
+
+  // Cargar trabajos padre
+  const trabajoIds = [...new Set(items.map((i) => (i as any).trabajo_id as string))];
+  const trabajoMap = new Map<string, Trabajo>();
+  for (const tid of trabajoIds) {
+    try { trabajoMap.set(tid, await getTrabajo(tid)); } catch { /* sin acceso */ }
+  }
+
+  return items
+    .filter((i) => (i as any).trabajo_id && trabajoMap.has((i as any).trabajo_id))
+    .map((i) => ({ item: i, trabajo: trabajoMap.get((i as any).trabajo_id)! }));
+}
