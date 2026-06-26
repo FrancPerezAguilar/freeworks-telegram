@@ -301,19 +301,29 @@ export async function getEventos(fechaDesde?: string, fechaHasta?: string): Prom
 // ── Checklist pendiente ───────────────────────────────────────
 
 export async function getChecklistPendiente(): Promise<{ item: ChecklistItem; trabajo: Trabajo }[]> {
-  // Solo podemos listar por colección. Listamos trabajos activos y sus checklists.
-  const trabajos = await getTrabajos({ estado: "en_curso", limite: 10 });
-  const pendientes = await getTrabajos({ estado: "pendiente", limite: 10 });
-  const todos = [...trabajos, ...pendientes];
+  // Consultar directamente trabajo_checklist por items NO completados
+  const res = await db.listDocuments(DB, "trabajo_checklist", [
+    Query.equal("completado", false),
+    Query.orderAsc("fecha"),
+    Query.limit(50),
+  ]);
+  const items = res.documents.map((d) => normalizeDoc<ChecklistItem>(d as AppwriteDoc));
 
+  // Agrupar por trabajo_id y cargar los trabajos
+  const trabajoIds = [...new Set(items.map((i) => (i as any).trabajo_id as string))];
   const result: { item: ChecklistItem; trabajo: Trabajo }[] = [];
-  for (const t of todos) {
-    const checklist = t.checklist ?? [];
-    for (const item of checklist) {
-      if (!item.completado) {
-        result.push({ item, trabajo: t });
+
+  for (const tid of trabajoIds) {
+    try {
+      const trabajo = await getTrabajo(tid);
+      const tareas = items.filter((i) => (i as any).trabajo_id === tid);
+      for (const item of tareas) {
+        if (!item.completado) {
+          result.push({ item, trabajo });
+        }
       }
-    }
+    } catch { /* skip trabajos sin acceso */ }
   }
-  return result.slice(0, 20);
+
+  return result.slice(0, 30);
 }
