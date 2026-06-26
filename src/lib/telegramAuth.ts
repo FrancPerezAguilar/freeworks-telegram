@@ -87,7 +87,7 @@ export async function authenticateWithTelegram(
   try {
     // 1) Listar todos los usuarios y buscar por prefs.tg
     const allUsers = await listAllUsers();
-    const existing = allUsers.find((u) => u.prefs?.tg === tgUser.id);
+    const existing = allUsers.find((u) => String(u.prefs?.tg) === String(tgUser.id));
 
     if (existing) {
       const token = await createUserToken(existing.$id);
