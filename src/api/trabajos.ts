@@ -32,7 +32,7 @@ export async function getTrabajo(id: string): Promise<Trabajo> {
 
   const checklistRes = await serverDb.listDocuments(DB, "trabajo_checklist", [
     Query.equal("trabajo_id", id),
-    Query.orderAsc("fecha_programada"),
+    Query.orderAsc("fecha"),
   ]);
   const checklist = checklistRes.documents.map((d) => normalizeDoc<ChecklistItem>(d as AppwriteDoc));
 
