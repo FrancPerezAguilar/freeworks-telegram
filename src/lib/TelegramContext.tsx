@@ -91,7 +91,12 @@ export function TelegramProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const tg = getWebApp();
-    if (!tg) return;
+    // Solo considerar Telegram si hay un usuario real (initDataUnsafe.user)
+    // La SDK crea un mock WebApp en navegadores normales sin usuario
+    if (!tg || !tg.initDataUnsafe?.user) {
+      setIsTelegram(false);
+      return;
+    }
     setWebApp(tg);
     setIsTelegram(true);
     setColorScheme(tg.colorScheme ?? null);
