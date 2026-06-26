@@ -3,7 +3,7 @@
  */
 
 import { Query, Permission, Role } from "appwrite";
-import { db, DB, normalizeDoc, type AppwriteDoc } from "../lib/appwrite";
+import { db, DB, storage, normalizeDoc, type AppwriteDoc } from "../lib/appwrite";
 
 import { getCurrentUserId } from "../lib/telegramAuth";
 
@@ -258,7 +258,6 @@ export async function getAdjuntos(entityType: string, entityId: string): Promise
 
 export async function uploadAdjunto(entityType: string, entityId: string, file: File): Promise<void> {
   // 1) Upload to Storage
-  const { storage } = await import("../lib/appwrite");
   const uploaded = await storage.createFile(BUCKET_ID, "unique()", file);
   
   // 2) Create metadata in adjuntos collection
@@ -280,7 +279,6 @@ export async function deleteAdjunto(appwriteId: string): Promise<void> {
     const doc = await db.getDocument(DB, "adjuntos", appwriteId);
     const bfid = (doc as any).bucket_file_id;
     if (bfid) {
-      const { storage } = await import("../lib/appwrite");
       await storage.deleteFile(BUCKET_ID, bfid);
     }
   } catch { /* file already deleted */ }
