@@ -191,32 +191,65 @@ export default function TrabajosListView({ onTrabajoClick }: Props) {
         </div>
       )}
 
-      {/* Kanban view */}
+      {/* Kanban view — columnas a ancho completo con scroll horizontal */}
       {viewMode === "kanban" && (
-        <div className="flex gap-2 overflow-x-auto">
-          {COLUMNAS.map((col) => (
-            <div key={col.estado} className="flex-1 min-w-0">
-              <div className="flex items-center gap-1.5 mb-2">
-                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: col.color }} />
-                <span className="text-xs font-semibold" style={{ color: "var(--tg-theme-text_color)" }}>
-                  {col.titulo}
-                </span>
-                <span className="text-xs ml-auto" style={{ color: "var(--tg-theme-hint_color)" }}>
-                  {kanbanGrupos[col.estado]?.length ?? 0}
-                </span>
+        <div className="flex flex-col gap-3">
+          {/* Column indicator dots */}
+          <div className="flex justify-center gap-1.5">
+            {COLUMNAS.map((col) => (
+              <button
+                key={col.estado}
+                onClick={() => {
+                  const el = document.getElementById(`kanban-col-${col.estado}`);
+                  el?.scrollIntoView({ behavior: "smooth", inline: "center" });
+                }}
+                className="w-2 h-2 rounded-full transition-all"
+                style={{ background: col.color, opacity: 0.6 }}
+              />
+            ))}
+          </div>
+
+          {/* Scrollable columns */}
+          <div
+            className="flex gap-3 overflow-x-auto snap-x snap-mandatory"
+            style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+          >
+            {COLUMNAS.map((col) => (
+              <div
+                key={col.estado}
+                id={`kanban-col-${col.estado}`}
+                className="flex-shrink-0 w-[calc(100vw-2rem)] snap-center"
+              >
+                <div className="flex items-center gap-2 mb-3 px-1">
+                  <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: col.color }} />
+                  <span className="text-sm font-bold" style={{ color: "var(--tg-theme-text_color)" }}>
+                    {col.titulo}
+                  </span>
+                  <span className="text-xs px-2 py-0.5 rounded-full ml-auto" style={{ background: col.color + "20", color: col.color }}>
+                    {kanbanGrupos[col.estado]?.length ?? 0}
+                  </span>
+                </div>
+                <div className="rounded-xl p-2 min-h-[300px]" style={{ background: "var(--tg-theme-secondary_bg_color)" }}>
+                  {kanbanGrupos[col.estado]?.map((t) => (
+                    <KanbanCard key={t.id} trabajo={t} onClick={() => onTrabajoClick(t.appwrite_id)} />
+                  ))}
+                  {(!kanbanGrupos[col.estado] || kanbanGrupos[col.estado].length === 0) && (
+                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                      <Wrench className="h-8 w-8 mb-2 opacity-20" style={{ color: col.color }} />
+                      <p className="text-xs" style={{ color: "var(--tg-theme-hint_color)", opacity: 0.5 }}>
+                        Sin trabajos {col.titulo.toLowerCase()}
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
-              <div className="rounded-lg p-1.5 min-h-[100px]" style={{ background: "var(--tg-theme-secondary_bg_color)" }}>
-                {kanbanGrupos[col.estado]?.map((t) => (
-                  <KanbanCard key={t.id} trabajo={t} onClick={() => onTrabajoClick(t.appwrite_id)} />
-                ))}
-                {(!kanbanGrupos[col.estado] || kanbanGrupos[col.estado].length === 0) && (
-                  <p className="text-xs text-center py-4" style={{ color: "var(--tg-theme-hint_color)", opacity: 0.5 }}>
-                    Vacío
-                  </p>
-                )}
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
+
+          {/* Swipe hint */}
+          <p className="text-xs text-center opacity-40" style={{ color: "var(--tg-theme-hint_color)" }}>
+            ← desliza para ver más columnas →
+          </p>
         </div>
       )}
     </div>
