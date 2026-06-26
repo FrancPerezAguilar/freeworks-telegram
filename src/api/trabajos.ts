@@ -1,10 +1,10 @@
 /**
- * API calls mínimas para la Mini App — solo lectura de trabajos.
- * Usa Appwrite SDK directamente.
+ * API calls para la Mini App — usan el cliente de sesión (db).
+ * Tras authenticateWithTelegram(), las llamadas van con permisos de usuario.
  */
 
 import { Query } from "appwrite";
-import { databases, DB, normalizeDoc, type AppwriteDoc } from "../lib/appwrite";
+import { db, DB, normalizeDoc, type AppwriteDoc } from "../lib/appwrite";
 
 // ── Tipos ─────────────────────────────────────────────────────
 
@@ -15,7 +15,7 @@ export interface ChecklistItem {
 
 export interface Trabajo {
   id: number; titulo: string; descripcion?: string;
-  cliente_id?: number; cliente_nombre?: string;
+  cliente_id?: string; cliente_nombre?: string;
   estado: string; prioridad: string;
   fecha_inicio?: string; fecha_fin_estimada?: string; fecha_fin_real?: string;
   obra_calle?: string; obra_numero?: string;
@@ -27,12 +27,10 @@ export interface Trabajo {
 // ── API ───────────────────────────────────────────────────────
 
 export async function getTrabajo(id: string): Promise<Trabajo> {
-  // Trabajo base
-  const doc = await databases.getDocument(DB, "trabajos", id);
+  const doc = await db.getDocument(DB, "trabajos", id);
   const trabajo = normalizeDoc<Trabajo>(doc as AppwriteDoc);
 
-  // Checklist
-  const checklistRes = await databases.listDocuments(DB, "trabajo_checklist", [
+  const checklistRes = await db.listDocuments(DB, "trabajo_checklist", [
     Query.equal("trabajo_id", id),
     Query.orderAsc("fecha_programada"),
   ]);
