@@ -93,6 +93,78 @@ export async function deleteChecklistItem(appwriteId: string): Promise<void> {
   await db.deleteDocument(DB, "trabajo_checklist", appwriteId);
 }
 
+// ── Tiempos ───────────────────────────────────────────────────
+
+export interface TiempoItem {
+  id: number; appwrite_id: string;
+  trabajo_id: string; horas: number;
+  descripcion?: string; fecha?: string;
+}
+
+export async function getTiempos(trabajoId: string): Promise<TiempoItem[]> {
+  const res = await db.listDocuments(DB, "trabajo_tiempos", [
+    Query.equal("trabajo_id", trabajoId),
+    Query.orderDesc("fecha"),
+  ]);
+  return res.documents.map((d) => normalizeDoc<TiempoItem>(d as AppwriteDoc));
+}
+
+export async function addTiempo(trabajoId: string, data: { horas: number; descripcion?: string; fecha?: string }): Promise<void> {
+  await db.createDocument(DB, "trabajo_tiempos", "unique()", {
+    trabajo_id: trabajoId, ...data,
+  } as Record<string, unknown>);
+}
+
+export async function deleteTiempo(appwriteId: string): Promise<void> {
+  await db.deleteDocument(DB, "trabajo_tiempos", appwriteId);
+}
+
+// ── Materiales usados ─────────────────────────────────────────
+
+export interface MaterialUsadoItem {
+  id: number; appwrite_id: string;
+  trabajo_id: string; nombre: string;
+  cantidad?: number; precio_unitario?: number; importe?: number;
+}
+
+export async function getMaterialesUsados(trabajoId: string): Promise<MaterialUsadoItem[]> {
+  const res = await db.listDocuments(DB, "trabajo_materiales", [
+    Query.equal("trabajo_id", trabajoId),
+    Query.orderDesc("\$createdAt"),
+  ]);
+  return res.documents.map((d) => normalizeDoc<MaterialUsadoItem>(d as AppwriteDoc));
+}
+
+export async function addMaterialUsado(trabajoId: string, data: {
+  nombre: string; cantidad?: number; precio_unitario?: number;
+}): Promise<void> {
+  const importe = (data.cantidad ?? 0) * (data.precio_unitario ?? 0);
+  await db.createDocument(DB, "trabajo_materiales", "unique()", {
+    trabajo_id: trabajoId, ...data, importe,
+  } as Record<string, unknown>);
+}
+
+export async function deleteMaterialUsado(appwriteId: string): Promise<void> {
+  await db.deleteDocument(DB, "trabajo_materiales", appwriteId);
+}
+
+// ── Técnicos ──────────────────────────────────────────────────
+
+export interface TecnicoItem {
+  id: number; appwrite_id: string;
+  nombre: string; especialidad?: string; activo?: boolean;
+}
+
+export async function getTecnicos(): Promise<TecnicoItem[]> {
+  const res = await db.listDocuments(DB, "tecnicos", [
+    Query.equal("activo", true),
+    Query.orderAsc("nombre"),
+    Query.limit(50),
+  ]);
+  return res.documents.map((d) => normalizeDoc<TecnicoItem>(d as AppwriteDoc));
+}
+
+
 // ── Clientes ──────────────────────────────────────────────────
 
 export async function getClientes(): Promise<Cliente[]> {
