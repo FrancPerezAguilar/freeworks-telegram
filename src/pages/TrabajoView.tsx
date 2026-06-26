@@ -141,6 +141,105 @@ function TabBar({ active, onSelect }: { active: TabId; onSelect: (t: TabId) => v
   );
 }
 
+// ── Address Autocomplete (Photon/OSM) ────────────────────────
+
+interface PhotonFeature {
+  properties: {
+    name?: string; housenumber?: string; street?: string;
+    city?: string; state?: string; country?: string;
+  };
+}
+
+function AddressAutocomplete({ calle, numero, municipio, provincia, onChange }: {
+  calle: string; numero: string; municipio: string; provincia: string;
+  onChange: (calle: string, numero: string, municipio: string, provincia: string) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<PhotonFeature[]>([]);
+  const [editing, setEditing] = useState(false);
+  const [showResults, setShowResults] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  const fullAddress = [calle, numero].filter(Boolean).join(" ") + 
+    (municipio ? `, ${municipio}` : "") + 
+    (provincia ? `, ${provincia}` : "");
+
+  const search = (q: string) => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    if (q.length < 3) { setResults([]); return; }
+    timerRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=5&lang=es`);
+        const data = await res.json();
+        setResults(data.features || []);
+        setShowResults(true);
+      } catch { setResults([]); }
+    }, 300);
+  };
+
+  const select = (f: PhotonFeature) => {
+    const p = f.properties;
+    const c = p.street || p.name || "";
+    const n = p.housenumber || "";
+    const m = p.city || "";
+    const prov = p.state || "";
+    onChange(c, n, m, prov);
+    setQuery("");
+    setResults([]);
+    setShowResults(false);
+    setEditing(false);
+  };
+
+  if (!editing) {
+    return (
+      <div className="flex flex-col gap-0.5 cursor-pointer group" onClick={() => setEditing(true)}>
+        <span className="text-xs font-medium" style={{ color: "var(--tg-theme-hint_color)" }}>Dirección de obra</span>
+        <div className="flex items-center gap-1">
+          <span className="text-sm py-1 px-2 rounded-md border border-transparent group-hover:border-gray-200 transition-colors truncate"
+            style={{ color: fullAddress ? "var(--tg-theme-text_color)" : "var(--tg-theme-hint_color)", opacity: fullAddress ? 1 : 0.5, background: "var(--tg-theme-secondary_bg_color)" }}>
+            {fullAddress || "—"}
+          </span>
+          <span className="text-xs opacity-0 group-hover:opacity-30 flex-shrink-0" style={{ color: "var(--tg-theme-hint_color)" }}>✎</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-0.5 relative">
+      <span className="text-xs font-medium" style={{ color: "var(--tg-theme-accent_text_color)" }}>Dirección de obra</span>
+      <input
+        type="text"
+        value={query}
+        onChange={(e) => { setQuery(e.target.value); search(e.target.value); }}
+        onBlur={() => setTimeout(() => { setShowResults(false); setEditing(false); }, 200)}
+        onKeyDown={(e) => { if (e.key === "Escape") { setEditing(false); setShowResults(false); } }}
+        placeholder="Busca una dirección…"
+        className="w-full bg-transparent text-sm py-1 px-2 rounded-md outline-none"
+        style={inputStyle}
+        autoFocus
+      />
+      {showResults && results.length > 0 && (
+        <div className="absolute top-full left-0 right-0 z-30 rounded-lg shadow-lg max-h-48 overflow-y-auto mt-1"
+          style={{ background: "var(--tg-theme-bg_color)", border: "1px solid rgba(128,128,128,0.15)" }}>
+          {results.map((f, i) => {
+            const p = f.properties;
+            const label = [p.street || p.name, p.housenumber].filter(Boolean).join(" ") + 
+              (p.city ? `, ${p.city}` : "") + (p.state ? `, ${p.state}` : "");
+            return (
+              <button key={i} onMouseDown={() => select(f)}
+                className="w-full text-left text-sm py-2 px-3 hover:opacity-80 active:opacity-60 border-b last:border-b-0"
+                style={{ color: "var(--tg-theme-text_color)", borderColor: "rgba(128,128,128,0.1)" }}>
+                {label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Sección: Info ─────────────────────────────────────────────
 
 function InfoSection({ local, updateLocal }: {
@@ -164,12 +263,18 @@ function InfoSection({ local, updateLocal }: {
         <Field label="Fin estimado" type="date" value={toInputDate(local.fecha_fin_estimada)} onChange={(v) => updateLocal("fecha_fin_estimada", v)} />
         <Field label="Fin real" type="date" value={toInputDate(local.fecha_fin_real)} onChange={(v) => updateLocal("fecha_fin_real", v)} />
       </div>
-      <div className="grid grid-cols-2 gap-2">
-        <Field label="Calle" value={local.obra_calle ?? ""} onChange={(v) => updateLocal("obra_calle", v)} />
-        <Field label="Número" value={local.obra_numero ?? ""} onChange={(v) => updateLocal("obra_numero", v)} />
-        <Field label="Municipio" value={local.obra_municipio ?? ""} onChange={(v) => updateLocal("obra_municipio", v)} />
-        <Field label="Provincia" value={local.obra_provincia ?? ""} onChange={(v) => updateLocal("obra_provincia", v)} />
-      </div>
+      <AddressAutocomplete
+        calle={local.obra_calle ?? ""}
+        numero={local.obra_numero ?? ""}
+        municipio={local.obra_municipio ?? ""}
+        provincia={local.obra_provincia ?? ""}
+        onChange={(c, n, m, p) => {
+          updateLocal("obra_calle", c);
+          updateLocal("obra_numero", n);
+          updateLocal("obra_municipio", m);
+          updateLocal("obra_provincia", p);
+        }}
+      />
       <div className="grid grid-cols-2 gap-2">
         <Field label="Total horas" type="number" value={local.total_horas?.toString() ?? ""} onChange={(v) => updateLocal("total_horas", parseFloat(v) || 0)} />
         <Field label="Coste total (€)" type="number" value={local.coste_total?.toString() ?? ""} onChange={(v) => updateLocal("coste_total", parseFloat(v) || 0)} />
