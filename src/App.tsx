@@ -63,12 +63,12 @@ function TabBar({ active, onSelect }: { active: View; onSelect: (v: View) => voi
         const inactiveColor = "var(--tg-theme-hint_color)";
         return (
           <button key={tab.id} onClick={() => onSelect(tab.id)}
-            className="flex-1 flex flex-col items-center gap-0.5 py-2 active:opacity-70"
+            className="flex-1 flex flex-col items-center gap-1 py-3 active:opacity-70"
           >
             <span style={{ color: isActive ? activeColor : inactiveColor }}>
-              <Icon className="h-5 w-5" />
+              <Icon className="h-6 w-6" />
             </span>
-            <span className="text-xs" style={{
+            <span className="text-sm" style={{
               color: isActive ? "var(--tg-theme-button_color)" : "var(--tg-theme-hint_color)",
               fontWeight: isActive ? 600 : 400,
             }}>
