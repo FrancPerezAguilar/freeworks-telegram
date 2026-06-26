@@ -1,9 +1,9 @@
 /**
- * API calls para la Mini App — Appwrite SDK con serverDb (API key).
+ * API calls para la Mini App — Appwrite SDK con sesión de usuario (db).
  */
 
 import { Query } from "appwrite";
-import { serverDb, DB, normalizeDoc, type AppwriteDoc } from "../lib/appwrite";
+import { db, DB, normalizeDoc, type AppwriteDoc } from "../lib/appwrite";
 
 // ── Tipos ─────────────────────────────────────────────────────
 
@@ -42,12 +42,12 @@ export interface CalendarioEvento {
 // ── Trabajos ──────────────────────────────────────────────────
 
 export async function getTrabajo(id: string): Promise<Trabajo> {
-  const doc = await serverDb.getDocument(DB, "trabajos", id);
+  const doc = await db.getDocument(DB, "trabajos", id);
   const trabajo = normalizeDoc<Trabajo>(doc as AppwriteDoc);
 
   let checklist: ChecklistItem[] = [];
   try {
-    const cl = await serverDb.listDocuments(DB, "trabajo_checklist", [
+    const cl = await db.listDocuments(DB, "trabajo_checklist", [
       Query.equal("trabajo_id", id),
       Query.orderAsc("fecha"),
     ]);
@@ -65,14 +65,14 @@ export async function getTrabajos(params?: {
   queries.push(Query.orderDesc("fecha_inicio"));
   queries.push(Query.limit(params?.limite ?? 20));
 
-  const res = await serverDb.listDocuments(DB, "trabajos", queries);
+  const res = await db.listDocuments(DB, "trabajos", queries);
   return res.documents.map((d) => normalizeDoc<Trabajo>(d as AppwriteDoc));
 }
 
 // ── Clientes ──────────────────────────────────────────────────
 
 export async function getClientes(): Promise<Cliente[]> {
-  const res = await serverDb.listDocuments(DB, "clientes", [
+  const res = await db.listDocuments(DB, "clientes", [
     Query.equal("activo", true),
     Query.orderAsc("nombre"),
     Query.limit(50),
@@ -90,7 +90,7 @@ export async function getEventos(fechaDesde?: string, fechaHasta?: string): Prom
   queries.push(Query.orderAsc("hora_evento"));
   queries.push(Query.limit(50));
 
-  const res = await serverDb.listDocuments(DB, "calendario", queries);
+  const res = await db.listDocuments(DB, "calendario", queries);
   return res.documents.map((d) => normalizeDoc<CalendarioEvento>(d as AppwriteDoc));
 }
 
