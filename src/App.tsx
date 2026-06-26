@@ -92,13 +92,18 @@ export default function App() {
   const [view, setView] = useState<View>("dashboard");
   const [selectedTrabajoId, setSelectedTrabajoId] = useState<string | null>(null);
 
-  // Leer trabajo_id de deep link
+  // Leer params de deep link: ?trabajo_id=ID | ?tab=agenda|trabajos
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const tid = params.get("trabajo_id");
+    const tab = params.get("tab");
     if (tid) {
       setSelectedTrabajoId(tid);
       setView("trabajo");
+    } else if (tab === "agenda") {
+      setView("agenda");
+    } else if (tab === "trabajos") {
+      setView("trabajos");
     }
   }, []);
 
