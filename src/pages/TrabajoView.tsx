@@ -637,7 +637,7 @@ function ChecklistSection({ trabajoId }: { trabajoId: string }) {
                   <div className="relative">
                     <button onClick={() => setMenuOpen(menuOpen === item.id ? null : item.id)}
                       className="p-1 rounded opacity-0 group-hover:opacity-100 active:opacity-100"
-                      style={{ color: "var(--tg-theme-hint_color)" }}>
+                      style={{ color: "var(--tg-theme-text_color)", opacity: 0.4 }}>
                       <MoreHorizontal className="h-4 w-4" />
                     </button>
                     {menuOpen === item.id && (
