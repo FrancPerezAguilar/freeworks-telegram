@@ -221,12 +221,21 @@ export async function getTecnicos(): Promise<TecnicoItem[]> {
 // ── Clientes ──────────────────────────────────────────────────
 
 export async function getClientes(search?: string): Promise<Cliente[]> {
-  const queries: string[] = [Query.orderAsc("nombre"), Query.limit(50)];
+  // Fetch all clientes, filter client-side (more reliable than Appwrite fulltext index)
+  const res = await db.listDocuments(DB, "clientes", [
+    Query.orderAsc("nombre"),
+    Query.limit(100),
+  ]);
+  let clientes = res.documents.map((d) => normalizeDoc<Cliente>(d as AppwriteDoc));
   if (search) {
-    queries.push(Query.search("nombre", search));
+    const q = search.toLowerCase();
+    clientes = clientes.filter((c) => 
+      c.nombre.toLowerCase().includes(q) || 
+      (c.apellidos ?? "").toLowerCase().includes(q) ||
+      (c.direccion_municipio ?? "").toLowerCase().includes(q)
+    );
   }
-  const res = await db.listDocuments(DB, "clientes", queries);
-  return res.documents.map((d) => normalizeDoc<Cliente>(d as AppwriteDoc));
+  return clientes;
 }
 
 export async function getCliente(id: string): Promise<Cliente> {

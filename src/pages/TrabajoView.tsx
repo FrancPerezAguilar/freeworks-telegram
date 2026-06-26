@@ -256,13 +256,13 @@ function ClienteSelector({ clienteId, clienteNombre, onChange }: {
 
   const search = (q: string) => {
     if (timerRef.current) clearTimeout(timerRef.current);
-    if (q.length < 2) { setResults([]); return; }
+    if (q.length < 1) { setResults([]); return; }
     timerRef.current = setTimeout(async () => {
       try {
         const r = await getClientes(q);
         setResults(r);
       } catch { setResults([]); }
-    }, 300);
+    }, 150);
   };
 
   const select = (c: Cliente) => {
