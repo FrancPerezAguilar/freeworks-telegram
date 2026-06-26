@@ -17,7 +17,8 @@ import type { Trabajo, ChecklistItem } from "../api/trabajos";
 import { useTelegramBackButton } from "../lib/TelegramContext";
 import {
   ArrowLeft, Info, Hammer, Package, CheckSquare,
-  Clock, Plus, Trash2, MessageSquare, Paperclip, FileText,
+  Plus, Trash2, MessageSquare, Paperclip, FileText,
+  Calendar as CalendarIcon, MoreHorizontal, Pencil,
 } from "lucide-react";
 
 // ── Helpers ───────────────────────────────────────────────────
@@ -588,6 +589,11 @@ function ChecklistSection({ trabajoId }: { trabajoId: string }) {
   const queryClient = useQueryClient();
   const [desc, setDesc] = useState("");
   const [fecha, setFecha] = useState("");
+  const [showDate, setShowDate] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editText, setEditText] = useState("");
+  const [editFecha, setEditFecha] = useState("");
+  const [menuOpen, setMenuOpen] = useState<number | null>(null);
 
   const { data: trabajo } = useQuery({
     queryKey: ["trabajo", trabajoId],
@@ -600,7 +606,7 @@ function ChecklistSection({ trabajoId }: { trabajoId: string }) {
   const handleAdd = async () => {
     if (!desc.trim()) return;
     await addChecklistItem(trabajoId, desc.trim());
-    setDesc(""); setFecha("");
+    setDesc(""); setFecha(""); setShowDate(false);
     queryClient.invalidateQueries({ queryKey: ["trabajo", trabajoId] });
   };
 
@@ -611,6 +617,21 @@ function ChecklistSection({ trabajoId }: { trabajoId: string }) {
 
   const deleteItem = async (item: ChecklistItem) => {
     await deleteChecklistItem(item.appwrite_id);
+    setMenuOpen(null);
+    queryClient.invalidateQueries({ queryKey: ["trabajo", trabajoId] });
+  };
+
+  const startEdit = (item: ChecklistItem) => {
+    setEditingId(item.id);
+    setEditText(item.descripcion);
+    setEditFecha(item.fecha || "");
+    setMenuOpen(null);
+  };
+
+  const saveEdit = async (item: ChecklistItem) => {
+    if (!editText.trim()) return;
+    await updateChecklistItem(item.appwrite_id, { descripcion: editText.trim() });
+    setEditingId(null);
     queryClient.invalidateQueries({ queryKey: ["trabajo", trabajoId] });
   };
 
@@ -621,18 +642,31 @@ function ChecklistSection({ trabajoId }: { trabajoId: string }) {
     <div className="flex flex-col gap-3 p-4">
       {/* Add form */}
       <div className="rounded-xl p-3" style={{ background: "var(--tg-theme-secondary_bg_color)" }}>
-        <div className="flex gap-2">
-          <input type="text" value={desc} onChange={(e) => setDesc(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") handleAdd(); }}
-            placeholder="Nueva tarea…"
-            className="flex-1 bg-transparent text-sm py-1 px-2 rounded-md outline-none" style={inputStyle} />
-          <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)}
-            className="w-32 bg-transparent text-sm py-1 px-2 rounded-md outline-none" style={inputStyle} />
-          <button onClick={handleAdd} disabled={!desc.trim()}
-            className="text-sm py-1 px-3 rounded-md font-medium flex-shrink-0"
-            style={{ background: "var(--tg-theme-button_color)", color: "var(--tg-theme-button_text_color)", opacity: desc.trim() ? 1 : 0.4 }}>
-            <Plus className="h-4 w-4" />
-          </button>
+        <div className="flex items-end gap-2">
+          <div className="flex-1">
+            <input type="text" value={desc} onChange={(e) => setDesc(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleAdd(); }}
+              placeholder="Añadir tarea…"
+              className="w-full bg-transparent text-sm py-2.5 px-3 rounded-lg outline-none"
+              style={inputStyle} />
+          </div>
+          <div className="flex items-center gap-1">
+            {showDate && (
+              <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)}
+                className="w-32 bg-transparent text-sm py-2 px-2 rounded-lg outline-none"
+                style={inputStyle} />
+            )}
+            <button onClick={() => setShowDate(!showDate)}
+              className="p-2 rounded-lg active:opacity-70 flex-shrink-0"
+              style={{ color: showDate ? "var(--tg-theme-button_color)" : "var(--tg-theme-hint_color)", background: "var(--tg-theme-bg_color)" }}>
+              <CalendarIcon className="h-4 w-4" />
+            </button>
+            <button onClick={handleAdd} disabled={!desc.trim()}
+              className="p-2 rounded-lg flex-shrink-0"
+              style={{ background: "var(--tg-theme-button_color)", color: "var(--tg-theme-button_text_color)", opacity: desc.trim() ? 1 : 0.4 }}>
+              <Plus className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -648,31 +682,77 @@ function ChecklistSection({ trabajoId }: { trabajoId: string }) {
 
       {/* List */}
       {checklist.length === 0 ? (
-        <p className="text-center text-sm py-4" style={{ color: "var(--tg-theme-hint_color)", opacity: 0.5 }}>No hay tareas pendientes</p>
+        <p className="text-center text-sm py-4" style={{ color: "var(--tg-theme-hint_color)", opacity: 0.5 }}>No hay tareas</p>
       ) : (
         <div className="flex flex-col gap-1">
           {checklist.map((item) => (
-            <div key={item.id} className="flex items-center gap-2 p-2 rounded-lg group"
-              style={{ background: "var(--tg-theme-secondary_bg_color)" }}>
-              <button onClick={() => toggleItem(item)} className="flex-shrink-0"
-                style={{ color: item.completado ? "#10b981" : "var(--tg-theme-hint_color)" }}>
-                <CheckSquare className="h-4 w-4" />
-              </button>
-              <div className="flex-1 min-w-0">
-                <span className={`text-sm ${item.completado ? "line-through opacity-50" : ""}`}
-                  style={{ color: item.completado ? "var(--tg-theme-hint_color)" : "var(--tg-theme-text_color)" }}>
-                  {item.descripcion}
-                </span>
-                {item.fecha && (
-                  <span className="text-xs ml-2" style={{ color: "var(--tg-theme-hint_color)" }}>
-                    <Clock className="h-3 w-3 inline mr-0.5" />{item.fecha}
-                  </span>
-                )}
-              </div>
-              <button onClick={() => deleteItem(item)}
-                className="opacity-0 group-hover:opacity-100 p-1" style={{ color: "var(--tg-theme-destructive_text_color)" }}>
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
+            <div key={item.id} className="relative">
+              {editingId === item.id ? (
+                /* ── Edit mode ── */
+                <div className="flex items-center gap-2 p-2 rounded-lg" style={{ background: "var(--tg-theme-secondary_bg_color)" }}>
+                  <button onClick={() => setEditingId(null)} className="flex-shrink-0"
+                    style={{ color: item.completado ? "#10b981" : "var(--tg-theme-hint_color)" }}>
+                    <CheckSquare className="h-4 w-4" />
+                  </button>
+                  <div className="flex-1 flex flex-col gap-1">
+                    <input type="text" value={editText} onChange={(e) => setEditText(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") saveEdit(item); if (e.key === "Escape") setEditingId(null); }}
+                      className="w-full bg-transparent text-sm py-1 px-2 rounded-md outline-none"
+                      style={inputStyle} autoFocus />
+                    <input type="date" value={editFecha} onChange={(e) => setEditFecha(e.target.value)}
+                      className="w-36 bg-transparent text-xs py-1 px-2 rounded-md outline-none"
+                      style={inputStyle} />
+                  </div>
+                  <button onClick={() => saveEdit(item)}
+                    className="text-xs px-2 py-1 rounded-md font-medium"
+                    style={{ background: "var(--tg-theme-button_color)", color: "var(--tg-theme-button_text_color)" }}>
+                    Guardar
+                  </button>
+                </div>
+              ) : (
+                /* ── Display mode ── */
+                <div className="flex items-center gap-2 p-2 rounded-lg group"
+                  style={{ background: "var(--tg-theme-secondary_bg_color)" }}>
+                  <button onClick={() => toggleItem(item)} className="flex-shrink-0"
+                    style={{ color: item.completado ? "#10b981" : "var(--tg-theme-hint_color)" }}>
+                    <CheckSquare className="h-4 w-4" />
+                  </button>
+                  <div className="flex-1 min-w-0">
+                    <span className={`text-sm ${item.completado ? "line-through opacity-50" : ""}`}
+                      style={{ color: item.completado ? "var(--tg-theme-hint_color)" : "var(--tg-theme-text_color)" }}>
+                      {item.descripcion}
+                    </span>
+                  </div>
+                  {item.fecha && (
+                    <span className="flex items-center gap-1 text-xs flex-shrink-0" style={{ color: "var(--tg-theme-hint_color)" }}>
+                      <CalendarIcon className="h-3 w-3" />{item.fecha}
+                    </span>
+                  )}
+                  {/* Three-dot menu */}
+                  <div className="relative">
+                    <button onClick={() => setMenuOpen(menuOpen === item.id ? null : item.id)}
+                      className="p-1 rounded opacity-0 group-hover:opacity-100 active:opacity-100"
+                      style={{ color: "var(--tg-theme-hint_color)" }}>
+                      <MoreHorizontal className="h-4 w-4" />
+                    </button>
+                    {menuOpen === item.id && (
+                      <div className="absolute right-0 top-full mt-1 rounded-lg shadow-lg py-1 z-20 min-w-[120px]"
+                        style={{ background: "var(--tg-theme-bg_color)", border: "1px solid rgba(128,128,128,0.15)" }}>
+                        <button onClick={() => startEdit(item)}
+                          className="w-full text-left text-sm px-3 py-1.5 active:opacity-70 flex items-center gap-2"
+                          style={{ color: "var(--tg-theme-text_color)" }}>
+                          <Pencil className="h-3.5 w-3.5" /> Editar
+                        </button>
+                        <button onClick={() => deleteItem(item)}
+                          className="w-full text-left text-sm px-3 py-1.5 active:opacity-70 flex items-center gap-2"
+                          style={{ color: "var(--tg-theme-destructive_text_color)" }}>
+                          <Trash2 className="h-3.5 w-3.5" /> Eliminar
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>
