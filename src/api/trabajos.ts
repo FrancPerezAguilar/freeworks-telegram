@@ -8,19 +8,22 @@ import { db, DB, normalizeDoc, type AppwriteDoc } from "../lib/appwrite";
 // ── Tipos ─────────────────────────────────────────────────────
 
 export interface ChecklistItem {
-  id: number; descripcion: string; completado: boolean;
+  id: number; appwrite_id: string;
+  descripcion: string; completado: boolean;
   fecha?: string; hora?: string;
 }
 
 export interface Trabajo {
   id: number; appwrite_id: string;
   titulo: string; descripcion?: string;
+  codigo_trabajo?: string;
   cliente_id?: string; cliente_nombre?: string;
   estado: string; prioridad: string;
   fecha_inicio?: string; fecha_fin_estimada?: string; fecha_fin_real?: string;
   obra_calle?: string; obra_numero?: string;
   obra_municipio?: string; obra_provincia?: string;
   total_horas?: number; coste_total?: number;
+  notas?: string; activo?: boolean;
   checklist?: ChecklistItem[];
 }
 
@@ -68,6 +71,26 @@ export async function getTrabajos(params?: {
 
   const res = await db.listDocuments(DB, "trabajos", queries);
   return res.documents.map((d) => normalizeDoc<Trabajo>(d as AppwriteDoc));
+}
+
+export async function updateTrabajo(id: string, data: Partial<Trabajo>): Promise<void> {
+  const { id: _id, appwrite_id: _aid, checklist: _cl, ...payload } = data as Record<string, unknown>;
+  void _id; void _aid; void _cl;
+  await db.updateDocument(DB, "trabajos", id, payload as Record<string, unknown>);
+}
+
+export async function updateChecklistItem(appwriteId: string, data: { completado?: boolean; descripcion?: string }): Promise<void> {
+  await db.updateDocument(DB, "trabajo_checklist", appwriteId, data as Record<string, unknown>);
+}
+
+export async function addChecklistItem(trabajoId: string, descripcion: string): Promise<void> {
+  await db.createDocument(DB, "trabajo_checklist", "unique()", {
+    trabajo_id: trabajoId, descripcion, completado: false,
+  } as Record<string, unknown>);
+}
+
+export async function deleteChecklistItem(appwriteId: string): Promise<void> {
+  await db.deleteDocument(DB, "trabajo_checklist", appwriteId);
 }
 
 // ── Clientes ──────────────────────────────────────────────────

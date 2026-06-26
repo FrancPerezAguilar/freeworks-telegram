@@ -1,96 +1,73 @@
 /**
- * TrabajoView — vista detalle de un trabajo para Telegram Mini App.
- * Recibe el trabajoId vía props (desde tab nav o deep link).
+ * TrabajoView — vista detalle editable de un trabajo.
+ * Todos los campos visibles y editables. Autosave al perder foco.
  */
 
-import { useQuery } from "@tanstack/react-query";
-import { getTrabajo } from "../api/trabajos";
-import type { Trabajo } from "../api/trabajos";
+import { useState, useCallback, useEffect, useRef } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  getTrabajo, updateTrabajo,
+  updateChecklistItem, addChecklistItem, deleteChecklistItem,
+} from "../api/trabajos";
+import type { Trabajo, ChecklistItem } from "../api/trabajos";
 import { useTelegramBackButton } from "../lib/TelegramContext";
-import { ESTADOS, PRIORIDADES, fmtDate } from "../lib/constants";
-import { MapPin, Calendar, Building2, AlertTriangle, Check, Clock, ArrowLeft } from "lucide-react";
+import {
+  ArrowLeft, Check, Clock, Plus, Trash2,
+} from "lucide-react";
 
-// ── Componente ────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────
 
-function TrabajoCard({ trabajo }: { trabajo: Trabajo }) {
-  const estado = ESTADOS[trabajo.estado] ?? ESTADOS.pendiente;
-  const prioridad = PRIORIDADES[trabajo.prioridad] ?? PRIORIDADES.media;
-  const checklistDone = trabajo.checklist?.filter((c) => c.completado).length ?? 0;
-  const checklistTotal = trabajo.checklist?.length ?? 0;
+function toInputDate(d?: string): string {
+  if (!d) return "";
+  return d.length === 10 ? d : d.slice(0, 10);
+}
 
+// ── Field ─────────────────────────────────────────────────────
+
+function Field({ label, value, onChange, onBlur, type = "text", multiline, placeholder }: {
+  label: string; value: string; onChange: (v: string) => void; onBlur?: () => void;
+  type?: string; multiline?: boolean; placeholder?: string;
+}) {
+  const Tag = multiline ? "textarea" : "input";
   return (
-    <div className="flex flex-col gap-3 p-4">
-      {/* Header */}
-      <div className="flex flex-col gap-1">
-        <div className="flex items-start justify-between gap-2">
-          <h1 className="text-lg font-bold flex-1" style={{ color: "var(--tg-theme-text_color)" }}>
-            {trabajo.titulo}
-          </h1>
-          <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${estado.color}`}>
-            {estado.label}
-          </span>
-        </div>
-        <span className={`text-xs font-medium ${prioridad.color}`}>
-          <AlertTriangle className="h-3 w-3 inline mr-1" />{prioridad.label}
-        </span>
-      </div>
+    <div className="flex flex-col gap-1">
+      <span className="text-xs font-medium" style={{ color: "var(--tg-theme-hint_color)" }}>{label}</span>
+      <Tag
+        type={multiline ? undefined : type}
+        value={value}
+        onChange={(e: any) => onChange(e.target.value)}
+        onBlur={onBlur}
+        placeholder={placeholder ?? "—"}
+        className="w-full bg-transparent text-sm py-1.5 px-2 rounded-lg outline-none border"
+        style={{
+          color: "var(--tg-theme-text_color)",
+          borderColor: "var(--tg-theme-hint_color)",
+          opacity: 0.5,
+          resize: multiline ? "vertical" : "none",
+        }}
+        rows={multiline ? 2 : undefined}
+      />
+    </div>
+  );
+}
 
-      {/* Datos */}
-      <div className="grid grid-cols-2 gap-2 text-sm">
-        {trabajo.cliente_nombre && (
-          <div className="flex items-center gap-1.5 p-2 rounded-lg" style={{ background: "var(--tg-theme-secondary_bg_color)" }}>
-            <Building2 className="h-4 w-4 flex-shrink-0" style={{ color: "var(--tg-theme-hint_color)" }} />
-            <span className="truncate">{trabajo.cliente_nombre}</span>
-          </div>
-        )}
-        {trabajo.fecha_inicio && (
-          <div className="flex items-center gap-1.5 p-2 rounded-lg" style={{ background: "var(--tg-theme-secondary_bg_color)" }}>
-            <Calendar className="h-4 w-4 flex-shrink-0" style={{ color: "var(--tg-theme-hint_color)" }} />
-            <span className="truncate">{fmtDate(trabajo.fecha_inicio)}</span>
-          </div>
-        )}
-        {(trabajo.obra_municipio || trabajo.obra_calle) && (
-          <div className="flex items-center gap-1.5 p-2 rounded-lg col-span-2" style={{ background: "var(--tg-theme-secondary_bg_color)" }}>
-            <MapPin className="h-4 w-4 flex-shrink-0" style={{ color: "var(--tg-theme-hint_color)" }} />
-            <span className="truncate">
-              {[trabajo.obra_calle, trabajo.obra_numero].filter(Boolean).join(" ")}
-              {trabajo.obra_municipio && `, ${trabajo.obra_municipio}`}
-            </span>
-          </div>
-        )}
-      </div>
-
-      {/* Checklist */}
-      {checklistTotal > 0 && (
-        <div className="rounded-lg p-3" style={{ background: "var(--tg-theme-secondary_bg_color)" }}>
-          <div className="flex items-center gap-2 mb-2">
-            <Check className="h-4 w-4" style={{ color: "var(--tg-theme-accent_text_color)" }} />
-            <span className="text-sm font-medium">Checklist ({checklistDone}/{checklistTotal})</span>
-          </div>
-          <div className="flex flex-col gap-1">
-            {trabajo.checklist!.map((item) => (
-              <div key={item.id} className="flex items-start gap-2 text-sm">
-                <span className={`mt-0.5 flex-shrink-0 ${item.completado ? "text-green-500" : ""}`}
-                  style={!item.completado ? { color: "var(--tg-theme-hint_color)" } : undefined}>
-                  {item.completado ? <Check className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
-                </span>
-                <span className={item.completado ? "line-through opacity-60" : ""}
-                  style={{ color: item.completado ? "var(--tg-theme-hint_color)" : "var(--tg-theme-text_color)" }}>
-                  {item.descripcion}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Horas y coste */}
-      {(trabajo.total_horas || trabajo.coste_total) && (
-        <div className="flex gap-4 text-xs" style={{ color: "var(--tg-theme-hint_color)" }}>
-          {trabajo.total_horas ? <span>⏱ {trabajo.total_horas}h</span> : null}
-          {trabajo.coste_total ? <span>💰 {trabajo.coste_total.toLocaleString("es-ES")}€</span> : null}
-        </div>
-      )}
+function SelectField({ label, value, options, onChange, onBlur }: {
+  label: string; value: string; options: Record<string, string>; onChange: (v: string) => void; onBlur?: () => void;
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="text-xs font-medium" style={{ color: "var(--tg-theme-hint_color)" }}>{label}</span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onBlur={onBlur}
+        className="w-full bg-transparent text-sm py-1.5 px-2 rounded-lg outline-none border"
+        style={{ color: "var(--tg-theme-text_color)", borderColor: "var(--tg-theme-hint_color)", opacity: 0.5 }}
+      >
+        {Object.entries(options).map(([k, v]) => (
+          <option key={k} value={k}>{v}</option>
+        ))}
+      </select>
     </div>
   );
 }
@@ -102,64 +79,229 @@ interface Props {
   onBack?: () => void;
 }
 
-export default function TrabajoView({ trabajoId: propId, onBack }: Props) {
-  // Leer de props o de URL (deep link)
-  const params = new URLSearchParams(window.location.search);
-  const urlId = params.get("trabajo_id");
-  const trabajoId = propId || urlId || "";
+export default function TrabajoView({ trabajoId, onBack }: Props) {
+  const queryClient = useQueryClient();
+  const [local, setLocal] = useState<Partial<Trabajo> | null>(null);
+  const [newTarea, setNewTarea] = useState("");
+  const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
-  useTelegramBackButton(!onBack); // Solo usar BackButton nativo si no hay nav propia
+  useTelegramBackButton(!onBack);
 
   const { data: trabajo, isLoading, error } = useQuery({
     queryKey: ["trabajo", trabajoId],
-    queryFn: () => getTrabajo(trabajoId),
+    queryFn: () => getTrabajo(trabajoId!),
     enabled: !!trabajoId,
   });
 
-  // Sin ID
+  // Sync remote → local
+  useEffect(() => {
+    if (trabajo && !local) setLocal({ ...trabajo });
+  }, [trabajo, local]);
+
+  const updateMutation = useMutation({
+    mutationFn: (data: Partial<Trabajo>) => updateTrabajo(trabajoId!, data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["trabajo", trabajoId] }),
+  });
+
+  const saveField = useCallback((field: string, value: unknown) => {
+    if (!trabajoId) return;
+
+    if (saveTimers.current[field]) clearTimeout(saveTimers.current[field]);
+    saveTimers.current[field] = setTimeout(async () => {
+      try {
+        await updateMutation.mutateAsync({ [field]: value } as Partial<Trabajo>);
+      } catch { /* noop */ }
+    }, 600);
+  }, [trabajoId, updateMutation]);
+
+  const updateLocal = useCallback((field: string, value: unknown) => {
+    setLocal((prev) => prev ? { ...prev, [field]: value } : prev);
+    saveField(field, value);
+  }, [saveField]);
+
+  // Checklist mutations
+  const toggleChecklist = useCallback(async (item: ChecklistItem) => {
+    if (!item.appwrite_id) return;
+    const newVal = !item.completado;
+    // Optimistic
+    setLocal((prev) => {
+      if (!prev?.checklist) return prev;
+      return {
+        ...prev,
+        checklist: prev.checklist.map((c) =>
+          c.id === item.id ? { ...c, completado: newVal } : c
+        ),
+      };
+    });
+    await updateChecklistItem(item.appwrite_id, { completado: newVal });
+    queryClient.invalidateQueries({ queryKey: ["trabajo", trabajoId] });
+  }, [trabajoId, queryClient]);
+
+  const handleAddTarea = useCallback(async () => {
+    if (!newTarea.trim() || !trabajoId) return;
+    await addChecklistItem(trabajoId, newTarea.trim());
+    setNewTarea("");
+    queryClient.invalidateQueries({ queryKey: ["trabajo", trabajoId] });
+  }, [newTarea, trabajoId, queryClient]);
+
+  const handleDeleteTarea = useCallback(async (item: ChecklistItem) => {
+    if (!item.appwrite_id) return;
+    await deleteChecklistItem(item.appwrite_id);
+    queryClient.invalidateQueries({ queryKey: ["trabajo", trabajoId] });
+  }, [trabajoId, queryClient]);
+
+  // ── Render ──────────────────────────────────────────────────
+
   if (!trabajoId) {
     return (
       <div className="flex h-screen items-center justify-center p-4">
-        <div className="text-center" style={{ color: "var(--tg-theme-hint_color)" }}>
-          <AlertTriangle className="h-12 w-12 mx-auto mb-3 opacity-40" />
-          <p className="text-sm">Selecciona un trabajo para ver sus detalles</p>
-        </div>
+        <p className="text-sm" style={{ color: "var(--tg-theme-hint_color)" }}>Selecciona un trabajo</p>
       </div>
     );
   }
 
-  if (isLoading) {
+  if (isLoading || !local) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 animate-spin rounded-full border-3 border-gray-200 border-t-blue-600" />
-          <p className="text-sm" style={{ color: "var(--tg-theme-hint_color)" }}>Cargando…</p>
-        </div>
+        <div className="h-8 w-8 animate-spin rounded-full border-3 border-gray-200 border-t-blue-600" />
       </div>
     );
   }
 
-  if (error || !trabajo) {
+  if (error) {
     return (
       <div className="flex h-screen items-center justify-center p-4">
         <div className="text-center" style={{ color: "var(--tg-theme-destructive_text_color)" }}>
-          <AlertTriangle className="h-10 w-10 mx-auto mb-2" />
           <p className="text-sm font-medium">Error al cargar</p>
-          <p className="text-xs mt-1 opacity-80">El trabajo no existe o no se puede acceder</p>
+          <p className="text-xs mt-1">El trabajo no existe o no se puede acceder</p>
         </div>
       </div>
     );
   }
 
+  const checklist = local.checklist ?? [];
+
   return (
-    <div>
-      {onBack && (
-        <button onClick={onBack} className="flex items-center gap-1 px-4 pt-3 text-sm active:opacity-70"
-          style={{ color: "var(--tg-theme-link_color)" }}>
-          <ArrowLeft className="h-4 w-4" /> Volver
-        </button>
-      )}
-      <TrabajoCard trabajo={trabajo} />
+    <div className="flex flex-col gap-4 p-4 pb-20">
+      {/* Header + back */}
+      <div className="flex items-center gap-3">
+        {onBack && (
+          <button onClick={onBack} className="active:opacity-70">
+            <ArrowLeft className="h-5 w-5" style={{ color: "var(--tg-theme-link_color)" }} />
+          </button>
+        )}
+        <h1 className="text-lg font-bold flex-1" style={{ color: "var(--tg-theme-text_color)" }}>
+          {local.titulo || "Sin título"}
+        </h1>
+      </div>
+
+      {/* ── Básicos ── */}
+      <Field label="Título" value={local.titulo ?? ""} onChange={(v) => updateLocal("titulo", v)} />
+      <Field label="Descripción" value={local.descripcion ?? ""} onChange={(v) => updateLocal("descripcion", v)} multiline />
+      <Field label="Código" value={local.codigo_trabajo ?? ""} onChange={(v) => updateLocal("codigo_trabajo", v)} />
+
+      <div className="grid grid-cols-2 gap-3">
+        <SelectField label="Estado" value={local.estado ?? "pendiente"}
+          options={{ pendiente: "Pendiente", en_curso: "En curso", completado: "Completado", cancelado: "Cancelado" }}
+          onChange={(v) => updateLocal("estado", v)} />
+        <SelectField label="Prioridad" value={local.prioridad ?? "media"}
+          options={{ baja: "Baja", media: "Media", alta: "Alta", urgente: "Urgente" }}
+          onChange={(v) => updateLocal("prioridad", v)} />
+      </div>
+
+      {/* ── Cliente ── */}
+      <div className="rounded-xl p-3" style={{ background: "var(--tg-theme-secondary_bg_color)" }}>
+        <span className="text-xs font-semibold" style={{ color: "var(--tg-theme-accent_text_color)" }}>Cliente</span>
+        <div className="mt-2 flex flex-col gap-2">
+          <Field label="Nombre" value={local.cliente_nombre ?? ""} onChange={(v) => updateLocal("cliente_nombre", v)} />
+        </div>
+      </div>
+
+      {/* ── Fechas ── */}
+      <div className="rounded-xl p-3" style={{ background: "var(--tg-theme-secondary_bg_color)" }}>
+        <span className="text-xs font-semibold" style={{ color: "var(--tg-theme-accent_text_color)" }}>Fechas</span>
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          <Field label="Inicio" type="date" value={toInputDate(local.fecha_inicio)} onChange={(v) => updateLocal("fecha_inicio", v)} />
+          <Field label="Fin estimado" type="date" value={toInputDate(local.fecha_fin_estimada)} onChange={(v) => updateLocal("fecha_fin_estimada", v)} />
+          <Field label="Fin real" type="date" value={toInputDate(local.fecha_fin_real)} onChange={(v) => updateLocal("fecha_fin_real", v)} />
+        </div>
+      </div>
+
+      {/* ── Dirección obra ── */}
+      <div className="rounded-xl p-3" style={{ background: "var(--tg-theme-secondary_bg_color)" }}>
+        <span className="text-xs font-semibold" style={{ color: "var(--tg-theme-accent_text_color)" }}>Dirección de obra</span>
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          <Field label="Calle" value={local.obra_calle ?? ""} onChange={(v) => updateLocal("obra_calle", v)} />
+          <Field label="Número" value={local.obra_numero ?? ""} onChange={(v) => updateLocal("obra_numero", v)} />
+          <Field label="Municipio" value={local.obra_municipio ?? ""} onChange={(v) => updateLocal("obra_municipio", v)} />
+          <Field label="Provincia" value={local.obra_provincia ?? ""} onChange={(v) => updateLocal("obra_provincia", v)} />
+        </div>
+      </div>
+
+      {/* ── Costes ── */}
+      <div className="rounded-xl p-3" style={{ background: "var(--tg-theme-secondary_bg_color)" }}>
+        <span className="text-xs font-semibold" style={{ color: "var(--tg-theme-accent_text_color)" }}>Costes</span>
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          <Field label="Total horas" type="number" value={local.total_horas?.toString() ?? ""} onChange={(v) => updateLocal("total_horas", parseFloat(v) || 0)} />
+          <Field label="Coste total (€)" type="number" value={local.coste_total?.toString() ?? ""} onChange={(v) => updateLocal("coste_total", parseFloat(v) || 0)} />
+        </div>
+      </div>
+
+      {/* ── Notas ── */}
+      <Field label="Notas" value={local.notas ?? ""} onChange={(v) => updateLocal("notas", v)} multiline />
+
+      {/* ── Checklist ── */}
+      <div className="rounded-xl p-3" style={{ background: "var(--tg-theme-secondary_bg_color)" }}>
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-semibold" style={{ color: "var(--tg-theme-accent_text_color)" }}>
+            Checklist ({checklist.filter(c => c.completado).length}/{checklist.length})
+          </span>
+        </div>
+        <div className="flex flex-col gap-2">
+          {checklist.map((item) => (
+            <div key={item.id} className="flex items-center gap-2 group">
+              <button
+                onClick={() => toggleChecklist(item)}
+                className="flex-shrink-0 p-0.5 rounded"
+                style={{ color: item.completado ? "#10b981" : "var(--tg-theme-hint_color)" }}
+              >
+                {item.completado ? <Check className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
+              </button>
+              <span
+                className={`flex-1 text-sm ${item.completado ? "line-through opacity-60" : ""}`}
+                style={{ color: item.completado ? "var(--tg-theme-hint_color)" : "var(--tg-theme-text_color)" }}
+              >
+                {item.descripcion}
+              </span>
+              <button onClick={() => handleDeleteTarea(item)} className="opacity-0 group-hover:opacity-100 active:opacity-100 p-0.5"
+                style={{ color: "var(--tg-theme-destructive_text_color)" }}>
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ))}
+          {/* Add new */}
+          <div className="flex items-center gap-2 mt-1">
+            <input
+              type="text"
+              value={newTarea}
+              onChange={(e) => setNewTarea(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleAddTarea(); }}
+              placeholder="Nueva tarea…"
+              className="flex-1 bg-transparent text-sm py-1 px-2 rounded-lg outline-none border"
+              style={{ borderColor: "var(--tg-theme-hint_color)", opacity: 0.4, color: "var(--tg-theme-text_color)" }}
+            />
+            <button onClick={handleAddTarea} disabled={!newTarea.trim()}
+              className="p-1 rounded-lg" style={{ background: "var(--tg-theme-button_color)", opacity: newTarea.trim() ? 1 : 0.4 }}>
+              <Plus className="h-4 w-4" style={{ color: "var(--tg-theme-button_text_color)" }} />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Save indicator */}
+      <div className="text-center text-xs" style={{ color: "var(--tg-theme-hint_color)" }}>
+        Los cambios se guardan automáticamente al salir del campo
+      </div>
     </div>
   );
 }
