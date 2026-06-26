@@ -6,7 +6,8 @@ import DashboardView from "./pages/DashboardView";
 import AgendaView from "./pages/AgendaView";
 import TrabajoView from "./pages/TrabajoView";
 import TrabajosListView from "./pages/TrabajosListView";
-import { LayoutDashboard, Calendar, Wrench } from "lucide-react";
+import MisTareasView from "./pages/MisTareasView";
+import { LayoutDashboard, Calendar, Wrench, CheckSquare } from "lucide-react";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
@@ -44,13 +45,14 @@ function AuthError({ message, onRetry }: { message: string; onRetry: () => void 
 
 // ── Tab bar ───────────────────────────────────────────────────
 
-type View = "dashboard" | "agenda" | "trabajos" | "trabajo";
+type View = "dashboard" | "agenda" | "trabajos" | "mistareas" | "trabajo";
 
 function TabBar({ active, onSelect }: { active: View; onSelect: (v: View) => void }) {
   const tabs: { id: View; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
     { id: "dashboard", label: "Inicio", icon: LayoutDashboard },
     { id: "trabajos", label: "Trabajos", icon: Wrench },
     { id: "agenda", label: "Agenda", icon: Calendar },
+    { id: "mistareas", label: "Tareas", icon: CheckSquare },
   ];
 
   return (
@@ -163,6 +165,8 @@ export default function App() {
         <AgendaView />
       ) : view === "trabajos" ? (
         <TrabajosListView onTrabajoClick={handleTrabajoClick} />
+      ) : view === "mistareas" ? (
+        <MisTareasView onTrabajoClick={handleTrabajoClick} />
       ) : (
         <DashboardView onTrabajoClick={handleTrabajoClick} />
       )}
