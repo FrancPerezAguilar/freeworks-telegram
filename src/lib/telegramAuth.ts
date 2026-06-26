@@ -1,56 +1,57 @@
 /**
- * Telegram Auth — autenticación vía Telegram initData + prefs de Appwrite.
+ * Telegram Auth — autenticación vía Telegram initData + colección user_telegram.
  *
  * Flujo:
  *  1. Lee Telegram initData → user.id (ej: 6341670106)
- *  2. Lista todos los usuarios Appwrite y busca el que tenga prefs.tg === telegramId
+ *  2. Busca en colección user_telegram por telegram_id
  *  3. Si existe → genera token de sesión y lo activa
- *  4. Si no → crea usuario, guarda prefs.tg, genera token, activa sesión
- *
- * Usa la REST API de Appwrite porque el SDK web no incluye Users.
+ *  4. Si no → crea usuario Appwrite, guarda mapping, genera token, activa sesión
  */
 
-import { ID, type Models } from "appwrite";
+import { ID, Query, type Models } from "appwrite";
 import { APPWRITE_CONFIG } from "../config";
-import { account } from "./appwrite";
+import { account, serverDb, DB } from "./appwrite";
 import type { WebAppUser } from "./TelegramContext";
 
 // ── Constantes ────────────────────────────────────────────────
 
+const COLLECTION = "user_telegram";
 const API = APPWRITE_CONFIG.endpoint;
 const PID = APPWRITE_CONFIG.projectId;
 const KEY = APPWRITE_CONFIG.apiKey;
-
-function headers(): Record<string, string> {
-  return {
-    "X-Appwrite-Project": PID,
-    "X-Appwrite-Key": KEY,
-    "Content-Type": "application/json",
-  };
-}
 
 function telegramEmail(telegramId: number): string {
   return `tg_${telegramId}@freeworks.app`;
 }
 
-// ── REST API ──────────────────────────────────────────────────
+// ── DB helpers (usan serverDb — API key) ─────────────────────
 
-interface AppwriteUser {
-  $id: string;
-  email: string;
-  name: string;
-  prefs: Record<string, unknown>;
+async function findMappingByTelegramId(telegramId: number): Promise<{ $id: string; telegram_id: number; appwrite_user_id: string } | null> {
+  try {
+    const res = await serverDb.listDocuments(DB, COLLECTION, [
+      Query.equal("telegram_id", telegramId),
+      Query.limit(1),
+    ]);
+    return (res.documents[0] as unknown as { $id: string; telegram_id: number; appwrite_user_id: string }) ?? null;
+  } catch {
+    return null;
+  }
 }
 
-/** Lista TODOS los usuarios (MVP — para pocos usuarios va bien) */
-async function listAllUsers(): Promise<AppwriteUser[]> {
-  const res = await fetch(`${API}/users`, { headers: headers() });
-  if (!res.ok) throw new Error(`listUsers failed: ${res.status}`);
-  const data = await res.json();
-  return data.users ?? [];
+async function createMapping(telegramId: number, appwriteUserId: string): Promise<void> {
+  await serverDb.createDocument(DB, COLLECTION, ID.unique(), {
+    telegram_id: telegramId,
+    appwrite_user_id: appwriteUserId,
+  });
 }
 
-async function createUser(email: string, name: string, prefs: Record<string, unknown>): Promise<AppwriteUser> {
+// ── REST API (users.* — no disponible en SDK web) ─────────────
+
+function headers(): Record<string, string> {
+  return { "X-Appwrite-Project": PID, "X-Appwrite-Key": KEY, "Content-Type": "application/json" };
+}
+
+async function createAppwriteUser(email: string, name: string, prefs: Record<string, unknown>): Promise<{ $id: string }> {
   const res = await fetch(`${API}/users`, {
     method: "POST",
     headers: headers(),
@@ -63,10 +64,7 @@ async function createUser(email: string, name: string, prefs: Record<string, unk
 async function createUserToken(userId: string): Promise<{ secret: string }> {
   const res = await fetch(`${API}/users/${userId}/tokens`, {
     method: "POST",
-    headers: {
-      "X-Appwrite-Project": PID,
-      "X-Appwrite-Key": KEY,
-    },
+    headers: { "X-Appwrite-Project": PID, "X-Appwrite-Key": KEY },
   });
   if (!res.ok) throw new Error(`createToken failed: ${res.status}`);
   return res.json();
@@ -85,23 +83,24 @@ export async function authenticateWithTelegram(
   tgUser: WebAppUser
 ): Promise<AuthResult> {
   try {
-    // 0) Limpiar cualquier sesión previa para evitar "session is active"
+    // 0) Limpiar sesión previa
     try { await account.deleteSessions(); } catch { /* noop */ }
 
-    // 1) Listar todos los usuarios y buscar por prefs.tg
-    const allUsers = await listAllUsers();
-    const existing = allUsers.find((u) => String(u.prefs?.tg) === String(tgUser.id));
+    // 1) Buscar mapping en colección (barato — una query)
+    const mapping = await findMappingByTelegramId(tgUser.id);
 
-    if (existing) {
-      const token = await createUserToken(existing.$id);
-      await account.createSession(existing.$id, token.secret);
-      return { ok: true, userId: existing.$id, isNewUser: false };
+    if (mapping) {
+      const token = await createUserToken(mapping.appwrite_user_id);
+      await account.createSession(mapping.appwrite_user_id, token.secret);
+      return { ok: true, userId: mapping.appwrite_user_id, isNewUser: false };
     }
 
-    // 2) No existe → crear con prefs.tg
+    // 2) No existe → crear usuario + mapping
     const email = telegramEmail(tgUser.id);
     const name = [tgUser.first_name, tgUser.last_name].filter(Boolean).join(" ") || `TG${tgUser.id}`;
-    const newUser = await createUser(email, name, { tg: tgUser.id });
+    const newUser = await createAppwriteUser(email, name, { tg: tgUser.id });
+
+    await createMapping(tgUser.id, newUser.$id);
 
     const token = await createUserToken(newUser.$id);
     await account.createSession(newUser.$id, token.secret);
