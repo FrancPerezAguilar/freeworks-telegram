@@ -439,9 +439,6 @@ function AdjuntosSection({ trabajoId }: { trabajoId: string }) {
 
 function TiemposSection({ trabajoId }: { trabajoId: string }) {
   const queryClient = useQueryClient();
-  const [horas, setHoras] = useState("");
-  const [desc, setDesc] = useState("");
-  const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10));
 
   const { data: tiempos = [], isLoading } = useQuery({
     queryKey: ["tiempos", trabajoId],
@@ -449,36 +446,12 @@ function TiemposSection({ trabajoId }: { trabajoId: string }) {
     enabled: !!trabajoId,
   });
 
-  const handleAdd = async () => {
-    if (!horas) return;
-    await addTiempo(trabajoId, { horas: parseFloat(horas), descripcion: desc || undefined, fecha });
-    setHoras(""); setDesc("");
-    queryClient.invalidateQueries({ queryKey: ["tiempos", trabajoId] });
-  };
-
   if (isLoading) return <div className="flex justify-center py-8"><div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-200 border-t-blue-600" /></div>;
 
   const total = tiempos.reduce((s, t) => s + (t.horas ?? 0), 0);
 
   return (
     <div className="flex flex-col gap-3 p-4">
-      {/* Add form */}
-      <div className="rounded-xl p-3" style={{ background: "var(--tg-theme-secondary_bg_color)" }}>
-        <div className="grid grid-cols-3 gap-2 mb-2">
-          <input type="number" value={horas} onChange={(e) => setHoras(e.target.value)} placeholder="Horas"
-            className="bg-transparent text-sm py-1 px-2 rounded-md outline-none" style={inputStyle} />
-          <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)}
-            className="bg-transparent text-sm py-1 px-2 rounded-md outline-none" style={inputStyle} />
-          <button onClick={handleAdd} disabled={!horas}
-            className="text-sm py-1 px-3 rounded-md font-medium"
-            style={{ background: "var(--tg-theme-button_color)", color: "var(--tg-theme-button_text_color)", opacity: horas ? 1 : 0.4 }}>
-            + Añadir
-          </button>
-        </div>
-        <input type="text" value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="Descripción del trabajo realizado…"
-          className="w-full bg-transparent text-sm py-1 px-2 rounded-md outline-none" style={inputStyle} />
-      </div>
-
       {/* List */}
       {tiempos.length === 0 ? (
         <p className="text-center text-sm py-4" style={{ color: "var(--tg-theme-hint_color)", opacity: 0.5 }}>Sin registros de tiempo</p>
@@ -512,9 +485,6 @@ function TiemposSection({ trabajoId }: { trabajoId: string }) {
 
 function MaterialesSection({ trabajoId }: { trabajoId: string }) {
   const queryClient = useQueryClient();
-  const [nombre, setNombre] = useState("");
-  const [cantidad, setCantidad] = useState("");
-  const [precio, setPrecio] = useState("");
 
   const { data: materiales = [], isLoading } = useQuery({
     queryKey: ["materiales", trabajoId],
@@ -522,15 +492,6 @@ function MaterialesSection({ trabajoId }: { trabajoId: string }) {
     enabled: !!trabajoId,
   });
 
-  const handleAdd = async () => {
-    if (!nombre) return;
-    await addMaterialUsado(trabajoId, {
-      nombre, cantidad: parseFloat(cantidad) || undefined,
-      precio_unitario: parseFloat(precio) || undefined,
-    });
-    setNombre(""); setCantidad(""); setPrecio("");
-    queryClient.invalidateQueries({ queryKey: ["materiales", trabajoId] });
-  };
 
   if (isLoading) return <div className="flex justify-center py-8"><div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-200 border-t-blue-600" /></div>;
 
@@ -538,23 +499,6 @@ function MaterialesSection({ trabajoId }: { trabajoId: string }) {
 
   return (
     <div className="flex flex-col gap-3 p-4">
-      {/* Add form */}
-      <div className="rounded-xl p-3" style={{ background: "var(--tg-theme-secondary_bg_color)" }}>
-        <div className="flex gap-2 mb-2">
-          <input type="text" value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Material"
-            className="flex-1 bg-transparent text-sm py-1 px-2 rounded-md outline-none" style={inputStyle} />
-          <input type="number" value={cantidad} onChange={(e) => setCantidad(e.target.value)} placeholder="Cant."
-            className="w-20 bg-transparent text-sm py-1 px-2 rounded-md outline-none" style={inputStyle} />
-          <input type="number" value={precio} onChange={(e) => setPrecio(e.target.value)} placeholder="€/ud"
-            className="w-20 bg-transparent text-sm py-1 px-2 rounded-md outline-none" style={inputStyle} />
-          <button onClick={handleAdd} disabled={!nombre}
-            className="text-sm py-1 px-3 rounded-md font-medium flex-shrink-0"
-            style={{ background: "var(--tg-theme-button_color)", color: "var(--tg-theme-button_text_color)", opacity: nombre ? 1 : 0.4 }}>
-            + Añadir
-          </button>
-        </div>
-      </div>
-
       {materiales.length === 0 ? (
         <p className="text-center text-sm py-4" style={{ color: "var(--tg-theme-hint_color)", opacity: 0.5 }}>Sin materiales registrados</p>
       ) : (
@@ -587,9 +531,6 @@ function MaterialesSection({ trabajoId }: { trabajoId: string }) {
 
 function ChecklistSection({ trabajoId }: { trabajoId: string }) {
   const queryClient = useQueryClient();
-  const [desc, setDesc] = useState("");
-  const [fecha, setFecha] = useState("");
-  const [showDate, setShowDate] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editText, setEditText] = useState("");
   const [editFecha, setEditFecha] = useState("");
@@ -603,12 +544,6 @@ function ChecklistSection({ trabajoId }: { trabajoId: string }) {
 
   const checklist = trabajo?.checklist ?? [];
 
-  const handleAdd = async () => {
-    if (!desc.trim()) return;
-    await addChecklistItem(trabajoId, desc.trim());
-    setDesc(""); setFecha(""); setShowDate(false);
-    queryClient.invalidateQueries({ queryKey: ["trabajo", trabajoId] });
-  };
 
   const toggleItem = async (item: ChecklistItem) => {
     await updateChecklistItem(item.appwrite_id, { completado: !item.completado });
@@ -640,36 +575,6 @@ function ChecklistSection({ trabajoId }: { trabajoId: string }) {
 
   return (
     <div className="flex flex-col gap-3 p-4">
-      {/* Add form */}
-      <div className="rounded-xl p-3" style={{ background: "var(--tg-theme-secondary_bg_color)" }}>
-        <div className="flex items-end gap-2">
-          <div className="flex-1">
-            <input type="text" value={desc} onChange={(e) => setDesc(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") handleAdd(); }}
-              placeholder="Añadir tarea…"
-              className="w-full bg-transparent text-sm py-2.5 px-3 rounded-lg outline-none"
-              style={inputStyle} />
-          </div>
-          <div className="flex items-center gap-1">
-            {showDate && (
-              <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)}
-                className="w-32 bg-transparent text-sm py-2 px-2 rounded-lg outline-none"
-                style={inputStyle} />
-            )}
-            <button onClick={() => setShowDate(!showDate)}
-              className="p-2 rounded-lg active:opacity-70 flex-shrink-0"
-              style={{ color: showDate ? "var(--tg-theme-button_color)" : "var(--tg-theme-hint_color)", background: "var(--tg-theme-bg_color)" }}>
-              <CalendarIcon className="h-4 w-4" />
-            </button>
-            <button onClick={handleAdd} disabled={!desc.trim()}
-              className="p-2 rounded-lg flex-shrink-0"
-              style={{ background: "var(--tg-theme-button_color)", color: "var(--tg-theme-button_text_color)", opacity: desc.trim() ? 1 : 0.4 }}>
-              <Plus className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      </div>
-
       {/* Progress */}
       {total > 0 && (
         <div className="flex items-center gap-2">
@@ -770,6 +675,16 @@ export default function TrabajoView({ trabajoId, onBack }: Props) {
   const [local, setLocal] = useState<Partial<Trabajo> | null>(null);
   const [tab, setTab] = useState<TabId>("info");
   const [comText, setComText] = useState("");
+  // Form states for tabs
+  const [tpoHoras, setTpoHoras] = useState("");
+  const [tpoDesc, setTpoDesc] = useState("");
+  const [tpoFecha, setTpoFecha] = useState(new Date().toISOString().slice(0, 10));
+  const [matNombre, setMatNombre] = useState("");
+  const [matCantidad, setMatCantidad] = useState("");
+  const [matPrecio, setMatPrecio] = useState("");
+  const [tarDesc, setTarDesc] = useState("");
+  const [tarFecha, setTarFecha] = useState("");
+  const [tarShowDate, setTarShowDate] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
@@ -824,32 +739,82 @@ export default function TrabajoView({ trabajoId, onBack }: Props) {
         {tab === "checklist" && <ChecklistSection trabajoId={trabajoId} />}
       </div>
 
-      {/* Bottom bar: comentario + adjunto */}
-      <div className="flex items-center gap-2 px-3 py-2 border-t flex-shrink-0"
+      {/* Bottom bar — adaptativa según pestaña */}
+      <div className="flex items-center gap-2 px-3 py-2.5 border-t flex-shrink-0"
         style={{ background: "var(--tg-theme-bg_color)", borderColor: "rgba(128,128,128,0.15)" }}>
-        <input type="text" value={comText} onChange={(e) => setComText(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && comText.trim()) {
-              addComentario("trabajo", trabajoId!, { contenido: comText.trim() });
-              setComText("");
-              queryClient.invalidateQueries({ queryKey: ["comentarios", trabajoId] });
-            }
-          }}
-          placeholder="Comentario…"
-          className="flex-1 bg-transparent text-sm py-2 px-3 rounded-full outline-none"
-          style={{ background: "var(--tg-theme-secondary_bg_color)", color: "var(--tg-theme-text_color)" }} />
-        <button onClick={() => fileRef.current?.click()}
-          className="p-2 rounded-full active:opacity-70 flex-shrink-0"
-          style={{ color: "var(--tg-theme-hint_color)" }}>
-          <Paperclip className="h-5 w-5" />
-        </button>
-        <input ref={fileRef} type="file" onChange={async (e) => {
-          const file = e.target.files?.[0];
-          if (!file || !trabajoId) return;
-          await uploadAdjunto("trabajo", trabajoId, file);
-          queryClient.invalidateQueries({ queryKey: ["adjuntos", trabajoId] });
-          if (fileRef.current) fileRef.current.value = "";
-        }} className="hidden" />
+        
+        {/* Info: comentario + adjunto */}
+        {tab === "info" && (
+          <>
+            <input type="text" value={comText} onChange={(e) => setComText(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && comText.trim()) { addComentario("trabajo", trabajoId!, { contenido: comText.trim() }); setComText(""); queryClient.invalidateQueries({ queryKey: ["comentarios", trabajoId] }); } }}
+              placeholder="Comentario…"
+              className="flex-1 bg-transparent text-sm py-2 px-3 rounded-full outline-none"
+              style={{ background: "var(--tg-theme-secondary_bg_color)", color: "var(--tg-theme-text_color)" }} />
+            <button onClick={() => fileRef.current?.click()} className="p-2 rounded-full active:opacity-70 flex-shrink-0"
+              style={{ color: "var(--tg-theme-hint_color)" }}><Paperclip className="h-5 w-5" /></button>
+            <input ref={fileRef} type="file" onChange={async (e) => { const f = e.target.files?.[0]; if (!f || !trabajoId) return; await uploadAdjunto("trabajo", trabajoId, f); queryClient.invalidateQueries({ queryKey: ["adjuntos", trabajoId] }); if (fileRef.current) fileRef.current.value = ""; }} className="hidden" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.zip" />
+          </>
+        )}
+
+        {/* Tiempos: horas + fecha + desc */}
+        {tab === "tiempos" && (
+          <>
+            <input type="number" value={tpoHoras} onChange={(e) => setTpoHoras(e.target.value)} placeholder="h"
+              className="w-14 bg-transparent text-sm py-2 px-2 rounded-lg outline-none text-center"
+              style={inputStyle} />
+            <input type="date" value={tpoFecha} onChange={(e) => setTpoFecha(e.target.value)}
+              className="w-32 bg-transparent text-sm py-2 px-2 rounded-lg outline-none"
+              style={inputStyle} />
+            <input type="text" value={tpoDesc} onChange={(e) => setTpoDesc(e.target.value)} placeholder="Descripción…"
+              className="flex-1 bg-transparent text-sm py-2 px-3 rounded-lg outline-none"
+              style={inputStyle} />
+            <button onClick={async () => { if (!tpoHoras) return; await addTiempo(trabajoId!, { horas: parseFloat(tpoHoras), descripcion: tpoDesc || undefined, fecha: tpoFecha }); setTpoHoras(""); setTpoDesc(""); queryClient.invalidateQueries({ queryKey: ["tiempos", trabajoId] }); }}
+              disabled={!tpoHoras} className="p-2 rounded-lg flex-shrink-0"
+              style={{ background: "var(--tg-theme-button_color)", color: "var(--tg-theme-button_text_color)", opacity: tpoHoras ? 1 : 0.4 }}><Plus className="h-4 w-4" /></button>
+          </>
+        )}
+
+        {/* Materiales: nombre + cant + precio */}
+        {tab === "materiales" && (
+          <>
+            <input type="text" value={matNombre} onChange={(e) => setMatNombre(e.target.value)} placeholder="Material"
+              className="flex-1 bg-transparent text-sm py-2 px-3 rounded-lg outline-none"
+              style={inputStyle} />
+            <input type="number" value={matCantidad} onChange={(e) => setMatCantidad(e.target.value)} placeholder="Cant."
+              className="w-16 bg-transparent text-sm py-2 px-2 rounded-lg outline-none"
+              style={inputStyle} />
+            <input type="number" value={matPrecio} onChange={(e) => setMatPrecio(e.target.value)} placeholder="€"
+              className="w-16 bg-transparent text-sm py-2 px-2 rounded-lg outline-none"
+              style={inputStyle} />
+            <button onClick={async () => { if (!matNombre) return; await addMaterialUsado(trabajoId!, { nombre: matNombre, cantidad: parseFloat(matCantidad) || undefined, precio_unitario: parseFloat(matPrecio) || undefined }); setMatNombre(""); setMatCantidad(""); setMatPrecio(""); queryClient.invalidateQueries({ queryKey: ["materiales", trabajoId] }); }}
+              disabled={!matNombre} className="p-2 rounded-lg flex-shrink-0"
+              style={{ background: "var(--tg-theme-button_color)", color: "var(--tg-theme-button_text_color)", opacity: matNombre ? 1 : 0.4 }}><Plus className="h-4 w-4" /></button>
+          </>
+        )}
+
+        {/* Checklist: desc + fecha opcional */}
+        {tab === "checklist" && (
+          <>
+            <input type="text" value={tarDesc} onChange={(e) => setTarDesc(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && tarDesc.trim()) { addChecklistItem(trabajoId!, tarDesc.trim()); setTarDesc(""); setTarFecha(""); setTarShowDate(false); queryClient.invalidateQueries({ queryKey: ["trabajo", trabajoId] }); } }}
+              placeholder="Nueva tarea…"
+              className="flex-1 bg-transparent text-sm py-2 px-3 rounded-lg outline-none"
+              style={inputStyle} />
+            {tarShowDate && (
+              <input type="date" value={tarFecha} onChange={(e) => setTarFecha(e.target.value)}
+                className="w-32 bg-transparent text-sm py-2 px-2 rounded-lg outline-none"
+                style={inputStyle} />
+            )}
+            <button onClick={() => setTarShowDate(!tarShowDate)} className="p-2 rounded-lg active:opacity-70 flex-shrink-0"
+              style={{ color: tarShowDate ? "var(--tg-theme-button_color)" : "var(--tg-theme-hint_color)", background: "var(--tg-theme-bg_color)" }}>
+              <CalendarIcon className="h-4 w-4" />
+            </button>
+            <button onClick={async () => { if (!tarDesc.trim()) return; await addChecklistItem(trabajoId!, tarDesc.trim()); setTarDesc(""); setTarFecha(""); setTarShowDate(false); queryClient.invalidateQueries({ queryKey: ["trabajo", trabajoId] }); }}
+              disabled={!tarDesc.trim()} className="p-2 rounded-lg flex-shrink-0"
+              style={{ background: "var(--tg-theme-button_color)", color: "var(--tg-theme-button_text_color)", opacity: tarDesc.trim() ? 1 : 0.4 }}><Plus className="h-4 w-4" /></button>
+          </>
+        )}
       </div>
     </div>
   );
