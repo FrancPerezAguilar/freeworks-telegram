@@ -150,7 +150,6 @@ function InfoSection({ local, updateLocal }: {
     <div className="flex flex-col gap-3 p-4">
       <Field label="Título" value={local.titulo ?? ""} onChange={(v) => updateLocal("titulo", v)} />
       <Field label="Descripción" value={local.descripcion ?? ""} onChange={(v) => updateLocal("descripcion", v)} multiline />
-      <Field label="Código" value={local.codigo_trabajo ?? ""} onChange={(v) => updateLocal("codigo_trabajo", v)} />
       <div className="grid grid-cols-2 gap-3">
         <SelectField label="Estado" value={local.estado ?? "pendiente"}
           options={{ pendiente: "Pendiente", en_curso: "En curso", completado: "Completado", cancelado: "Cancelado" }}

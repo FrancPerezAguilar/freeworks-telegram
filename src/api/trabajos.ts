@@ -37,7 +37,6 @@ export interface ChecklistItem {
 export interface Trabajo {
   id: number; appwrite_id: string;
   titulo: string; descripcion?: string;
-  codigo_trabajo?: string;
   cliente_id?: string; cliente_nombre?: string;
   estado: string; prioridad: string;
   fecha_inicio?: string; fecha_fin_estimada?: string; fecha_fin_real?: string;
