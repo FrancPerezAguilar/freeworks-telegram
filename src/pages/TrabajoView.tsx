@@ -12,9 +12,9 @@ import {
   updateChecklistItem, addChecklistItem, deleteChecklistItem,
   getComentarios, addComentario, deleteComentario,
   getAdjuntos, uploadAdjunto, deleteAdjunto,
-  getClientes,
+  getClientes, getMateriales, createMaterial,
 } from "../api/trabajos";
-import type { Trabajo, ChecklistItem, Cliente } from "../api/trabajos";
+import type { Trabajo, ChecklistItem, Cliente, MaterialCatalogo } from "../api/trabajos";
 import { useTelegramBackButton } from "../lib/TelegramContext";
 import {
   ArrowLeft, Info, Hammer, Package, CheckSquare,
@@ -322,6 +322,77 @@ function ClienteSelector({ clienteId, clienteNombre, onChange }: {
   );
 }
 
+
+
+// ── Material Selector ─────────────────────────────────────────
+
+function MaterialSelector({ value, onChange, onPriceUnitChange }: {
+  value: string; onChange: (nombre: string) => void;
+  onPriceUnitChange: (precio: number) => void;
+}) {
+  const [results, setResults] = useState<MaterialCatalogo[]>([]);
+  const [showResults, setShowResults] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  const search = (q: string) => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    if (q.length < 1) { setResults([]); setShowResults(false); return; }
+    timerRef.current = setTimeout(async () => {
+      try {
+        const r = await getMateriales(q);
+        setResults(r.slice(0, 6));
+        setShowResults(true);
+      } catch { setResults([]); }
+    }, 150);
+  };
+
+  const select = (m: MaterialCatalogo) => {
+    onChange(m.nombre);
+    onPriceUnitChange(m.precio_unitario ?? 0);
+    setResults([]);
+    setShowResults(false);
+  };
+
+  const crearNuevo = () => {
+    // Crear material con el texto actual como nombre
+    if (!value.trim()) return;
+    createMaterial({ nombre: value.trim() }).then((m) => select(m));
+  };
+
+  const existsInResults = results.some((m) => m.nombre.toLowerCase() === value.toLowerCase());
+  const canCreate = value.trim().length >= 2 && !existsInResults;
+
+  return (
+    <div className="relative flex-1">
+      <input type="text" value={value} onChange={(e) => { onChange(e.target.value); search(e.target.value); }}
+        onFocus={() => { if (results.length > 0) setShowResults(true); }}
+        onBlur={() => setTimeout(() => setShowResults(false), 200)}
+        placeholder="Material"
+        className="w-full bg-transparent text-sm py-2 px-3 rounded-lg outline-none"
+        style={inputStyle} />
+      {showResults && (results.length > 0 || canCreate) && (
+        <div className="absolute top-full left-0 right-0 z-30 rounded-lg shadow-lg max-h-48 overflow-y-auto mt-1"
+          style={{ background: "var(--tg-theme-bg_color)", border: "1px solid rgba(128,128,128,0.15)" }}>
+          {results.map((m) => (
+            <button key={m.id} onMouseDown={() => select(m)}
+              className="w-full text-left text-sm py-2 px-3 hover:opacity-80 active:opacity-60 border-b last:border-b-0"
+              style={{ color: "var(--tg-theme-text_color)", borderColor: "rgba(128,128,128,0.1)" }}>
+              <span className="font-medium">{m.nombre}</span>
+              {m.precio_unitario != null && <span className="text-xs ml-2 opacity-50">{m.precio_unitario.toFixed(2)}€/{m.unidad_medida || "ud"}</span>}
+            </button>
+          ))}
+          {canCreate && (
+            <button onMouseDown={crearNuevo}
+              className="w-full text-left text-sm py-2 px-3 hover:opacity-80 active:opacity-60 flex items-center gap-2"
+              style={{ color: "var(--tg-theme-accent_text_color)", borderColor: "rgba(128,128,128,0.1)" }}>
+              <Plus className="h-3.5 w-3.5" /> Crear "{value.trim()}"
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ── Sección: Info ─────────────────────────────────────────────
 
@@ -771,7 +842,7 @@ export default function TrabajoView({ trabajoId, onBack }: Props) {
   const [matNombre, setMatNombre] = useState("");
   const [matCantidad, setMatCantidad] = useState("");
   const [matPrecio, setMatPrecio] = useState("");
-  const [tarDesc, setTarDesc] = useState("");
+    const [tarDesc, setTarDesc] = useState("");
   const [tarFecha, setTarFecha] = useState("");
   const [tarShowDate, setTarShowDate] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -864,19 +935,18 @@ export default function TrabajoView({ trabajoId, onBack }: Props) {
           </>
         )}
 
-        {/* Materiales: nombre + cant + precio */}
+        {/* Materiales: selector + cant + precio */}
         {tab === "materiales" && (
           <>
-            <input type="text" value={matNombre} onChange={(e) => setMatNombre(e.target.value)} placeholder="Material"
-              className="flex-1 bg-transparent text-sm py-2 px-3 rounded-lg outline-none"
-              style={inputStyle} />
+            <MaterialSelector value={matNombre} onChange={setMatNombre}
+              onPriceUnitChange={(precio) => { setMatPrecio(precio.toString()); }} />
             <input type="number" value={matCantidad} onChange={(e) => setMatCantidad(e.target.value)} placeholder="Cant."
               className="w-16 bg-transparent text-sm py-2 px-2 rounded-lg outline-none"
               style={inputStyle} />
             <input type="number" value={matPrecio} onChange={(e) => setMatPrecio(e.target.value)} placeholder="€"
               className="w-16 bg-transparent text-sm py-2 px-2 rounded-lg outline-none"
               style={inputStyle} />
-            <button onClick={async () => { if (!matNombre) return; await addMaterialUsado(trabajoId!, { nombre: matNombre, cantidad: parseFloat(matCantidad) || undefined, precio_unitario: parseFloat(matPrecio) || undefined }); setMatNombre(""); setMatCantidad(""); setMatPrecio(""); queryClient.invalidateQueries({ queryKey: ["materiales", trabajoId] }); }}
+            <button onClick={async () => { if (!matNombre) return; await addMaterialUsado(trabajoId!, { nombre: matNombre, cantidad: parseFloat(matCantidad) || undefined, precio_unitario: parseFloat(matPrecio) || undefined }); setMatNombre(""); setMatCantidad(""); setMatPrecio("");  queryClient.invalidateQueries({ queryKey: ["materiales", trabajoId] }); }}
               disabled={!matNombre} className="p-2 rounded-lg flex-shrink-0"
               style={{ background: "var(--tg-theme-button_color)", color: "var(--tg-theme-button_text_color)", opacity: matNombre ? 1 : 0.4 }}><Plus className="h-4 w-4" /></button>
           </>

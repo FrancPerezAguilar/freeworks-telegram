@@ -218,6 +218,45 @@ export async function getTecnicos(): Promise<TecnicoItem[]> {
 }
 
 
+
+// ── Materiales (catálogo) ─────────────────────────────────────
+
+export interface MaterialCatalogo {
+  id: number; appwrite_id: string;
+  nombre: string; descripcion?: string; categoria?: string;
+  precio_unitario?: number; unidad_medida?: string;
+  stock_actual?: number; fabricante?: string;
+  referencia_fabricante?: string; activo?: boolean;
+}
+
+export async function getMateriales(search?: string): Promise<MaterialCatalogo[]> {
+  const res = await db.listDocuments(DB, "materiales", [
+    Query.orderAsc("nombre"),
+    Query.limit(100),
+  ]);
+  let mats = res.documents.map((d) => normalizeDoc<MaterialCatalogo>(d as AppwriteDoc));
+  if (search) {
+    const q = search.toLowerCase();
+    mats = mats.filter((m) =>
+      m.nombre.toLowerCase().includes(q) ||
+      (m.descripcion ?? "").toLowerCase().includes(q) ||
+      (m.categoria ?? "").toLowerCase().includes(q) ||
+      (m.fabricante ?? "").toLowerCase().includes(q)
+    );
+  }
+  return mats;
+}
+
+export async function createMaterial(data: {
+  nombre: string; precio_unitario?: number; unidad_medida?: string;
+  categoria?: string; descripcion?: string;
+}): Promise<MaterialCatalogo> {
+  const doc = await db.createDocument(DB, "materiales", "unique()", {
+    ...data, activo: true,
+  } as Record<string, unknown>, await getUserPerms());
+  return normalizeDoc<MaterialCatalogo>(doc as AppwriteDoc);
+}
+
 // ── Clientes ──────────────────────────────────────────────────
 
 export async function getClientes(search?: string): Promise<Cliente[]> {
