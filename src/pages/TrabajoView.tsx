@@ -22,30 +22,72 @@ function toInputDate(d?: string): string {
   return d.length === 10 ? d : d.slice(0, 10);
 }
 
-// ── Field ─────────────────────────────────────────────────────
+// ── Field (click-to-edit) ─────────────────────────────────────
 
 function Field({ label, value, onChange, onBlur, type = "text", multiline, placeholder }: {
   label: string; value: string; onChange: (v: string) => void; onBlur?: () => void;
   type?: string; multiline?: boolean; placeholder?: string;
 }) {
+  const [editing, setEditing] = useState(false);
+  const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (editing && inputRef.current) {
+      inputRef.current.focus();
+      if (!multiline) (inputRef.current as HTMLInputElement).select();
+    }
+  }, [editing, multiline]);
+
+  const handleBlur = () => {
+    setEditing(false);
+    onBlur?.();
+  };
+
+  const display = value || placeholder || "—";
+  const isEmpty = !value;
+
+  if (!editing) {
+    const Tag = multiline ? "div" : "span";
+    return (
+      <div className="flex flex-col gap-1 cursor-pointer group" onClick={() => setEditing(true)}>
+        <span className="text-xs font-medium" style={{ color: "var(--tg-theme-hint_color)" }}>{label}</span>
+        <div className="flex items-center gap-2">
+          <Tag
+            className={`text-sm py-1.5 px-2 rounded-lg border border-transparent group-hover:border-gray-200 transition-colors ${multiline ? "" : "truncate"}`}
+            style={{
+              color: isEmpty ? "var(--tg-theme-hint_color)" : "var(--tg-theme-text_color)",
+              opacity: isEmpty ? 0.5 : 1,
+              background: "var(--tg-theme-secondary_bg_color)",
+            }}
+          >
+            {display}
+          </Tag>
+          <span className="text-xs opacity-0 group-hover:opacity-40 flex-shrink-0" style={{ color: "var(--tg-theme-hint_color)" }}>✎</span>
+        </div>
+      </div>
+    );
+  }
+
   const Tag = multiline ? "textarea" : "input";
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-xs font-medium" style={{ color: "var(--tg-theme-hint_color)" }}>{label}</span>
+      <span className="text-xs font-medium" style={{ color: "var(--tg-theme-accent_text_color)" }}>{label}</span>
       <Tag
+        ref={inputRef as any}
         type={multiline ? undefined : type}
         value={value}
         onChange={(e: any) => onChange(e.target.value)}
-        onBlur={onBlur}
+        onBlur={handleBlur}
+        onKeyDown={(e) => { if (e.key === "Escape") { setEditing(false); } }}
         placeholder={placeholder ?? "—"}
-        className="w-full bg-transparent text-sm py-1.5 px-2 rounded-lg outline-none border"
+        className="w-full bg-transparent text-sm py-1.5 px-2 rounded-lg outline-none ring-1"
         style={{
           color: "var(--tg-theme-text_color)",
-          borderColor: "var(--tg-theme-hint_color)",
-          opacity: 0.5,
+          boxShadow: "0 0 0 1px var(--tg-theme-button_color)",
           resize: multiline ? "vertical" : "none",
         }}
         rows={multiline ? 2 : undefined}
+        autoFocus
       />
     </div>
   );
@@ -54,15 +96,44 @@ function Field({ label, value, onChange, onBlur, type = "text", multiline, place
 function SelectField({ label, value, options, onChange, onBlur }: {
   label: string; value: string; options: Record<string, string>; onChange: (v: string) => void; onBlur?: () => void;
 }) {
+  const [editing, setEditing] = useState(false);
+  const selectRef = useRef<HTMLSelectElement>(null);
+
+  useEffect(() => {
+    if (editing && selectRef.current) selectRef.current.focus();
+  }, [editing]);
+
+  const handleBlur = () => {
+    setEditing(false);
+    onBlur?.();
+  };
+
+  if (!editing) {
+    const display = options[value] ?? value;
+    return (
+      <div className="flex flex-col gap-1 cursor-pointer group" onClick={() => setEditing(true)}>
+        <span className="text-xs font-medium" style={{ color: "var(--tg-theme-hint_color)" }}>{label}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-sm py-1.5 px-2 rounded-lg border border-transparent group-hover:border-gray-200 transition-colors truncate"
+            style={{ color: "var(--tg-theme-text_color)", background: "var(--tg-theme-secondary_bg_color)" }}>
+            {display}
+          </span>
+          <span className="text-xs opacity-0 group-hover:opacity-40 flex-shrink-0" style={{ color: "var(--tg-theme-hint_color)" }}>✎</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-xs font-medium" style={{ color: "var(--tg-theme-hint_color)" }}>{label}</span>
+      <span className="text-xs font-medium" style={{ color: "var(--tg-theme-accent_text_color)" }}>{label}</span>
       <select
+        ref={selectRef}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onBlur={onBlur}
-        className="w-full bg-transparent text-sm py-1.5 px-2 rounded-lg outline-none border"
-        style={{ color: "var(--tg-theme-text_color)", borderColor: "var(--tg-theme-hint_color)", opacity: 0.5 }}
+        onChange={(e) => { onChange(e.target.value); setEditing(false); }}
+        onBlur={handleBlur}
+        className="w-full bg-transparent text-sm py-1.5 px-2 rounded-lg outline-none ring-1"
+        style={{ color: "var(--tg-theme-text_color)", boxShadow: "0 0 0 1px var(--tg-theme-button_color)" }}
       >
         {Object.entries(options).map(([k, v]) => (
           <option key={k} value={k}>{v}</option>
