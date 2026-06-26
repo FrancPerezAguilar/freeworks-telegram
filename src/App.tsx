@@ -138,7 +138,7 @@ export default function App() {
         ) : (
           <DashboardView onTrabajoClick={handleTrabajoClick} />
         )}
-        <TabBar active={view === "trabajo" ? "dashboard" : view} onSelect={(v) => { setView(v); setSelectedTrabajoId(null); }} />
+        {view !== "trabajo" && <TabBar active={view} onSelect={(v) => { setView(v); setSelectedTrabajoId(null); }} />}
       </QueryClientProvider>
     );
   }
@@ -161,7 +161,7 @@ export default function App() {
       ) : (
         <DashboardView onTrabajoClick={handleTrabajoClick} />
       )}
-      <TabBar active={view === "trabajo" ? "dashboard" : view} onSelect={(v) => { setView(v); setSelectedTrabajoId(null); }} />
+      {view !== "trabajo" && <TabBar active={view} onSelect={(v) => { setView(v); setSelectedTrabajoId(null); }} />}
     </QueryClientProvider>
   );
 }

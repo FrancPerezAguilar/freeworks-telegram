@@ -206,6 +206,66 @@ export async function getClientes(): Promise<Cliente[]> {
   return res.documents.map((d) => normalizeDoc<Cliente>(d as AppwriteDoc));
 }
 
+
+// ── Adjuntos ──────────────────────────────────────────────────
+
+export interface AdjuntoItem {
+  id: number; appwrite_id: string;
+  entity_type: string; entity_id: string;
+  nombre: string; tipo?: string; tamano?: number; url?: string;
+  bucket_file_id?: string;
+}
+
+const BUCKET_ID = "adjuntos";
+
+export async function getAdjuntos(entityType: string, entityId: string): Promise<AdjuntoItem[]> {
+  const res = await db.listDocuments(DB, "adjuntos", [
+    Query.equal("entity_type", entityType),
+    Query.equal("entity_id", entityId),
+    Query.orderDesc("\$createdAt"),
+  ]);
+  return res.documents.map((d) => {
+    const doc = normalizeDoc<AdjuntoItem>(d as AppwriteDoc);
+    // Build public URL
+    const bfid = (d as any).bucket_file_id;
+    if (bfid) {
+      doc.url = `https://cloud.appwrite.io/v1/storage/buckets/${BUCKET_ID}/files/${bfid}/view?project=6a3a9bfd00036f813523`;
+    }
+    return doc;
+  });
+}
+
+export async function uploadAdjunto(entityType: string, entityId: string, file: File): Promise<void> {
+  // 1) Upload to Storage
+  const { storage } = await import("../lib/appwrite");
+  const uploaded = await storage.createFile(BUCKET_ID, "unique()", file);
+  
+  // 2) Create metadata in adjuntos collection
+  const tipo = file.type.startsWith("image/") ? "foto" 
+    : file.type === "application/pdf" ? "pdf" 
+    : file.type.startsWith("audio/") ? "audio" 
+    : "documento";
+  
+  await db.createDocument(DB, "adjuntos", "unique()", {
+    entity_type: entityType, entity_id: entityId,
+    nombre: file.name, tipo, tamano: file.size,
+    bucket_file_id: uploaded.$id,
+  } as Record<string, unknown>);
+}
+
+export async function deleteAdjunto(appwriteId: string): Promise<void> {
+  // Try to get bucket_file_id before deleting
+  try {
+    const doc = await db.getDocument(DB, "adjuntos", appwriteId);
+    const bfid = (doc as any).bucket_file_id;
+    if (bfid) {
+      const { storage } = await import("../lib/appwrite");
+      await storage.deleteFile(BUCKET_ID, bfid);
+    }
+  } catch { /* file already deleted */ }
+  await db.deleteDocument(DB, "adjuntos", appwriteId);
+}
+
 // ── Calendario ────────────────────────────────────────────────
 
 export async function getEventos(fechaDesde?: string, fechaHasta?: string): Promise<CalendarioEvento[]> {

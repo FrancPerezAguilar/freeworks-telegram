@@ -1,4 +1,4 @@
-import { Client, Databases, Account, type Models } from "appwrite";
+import { Client, Databases, Account, Storage, type Models } from "appwrite";
 import { APPWRITE_CONFIG } from "../config";
 
 // ── Cliente servidor (API key) ───────────────────────────────
@@ -25,6 +25,9 @@ export const account = new Account(sessionClient);
 
 /** Databases con sesión de usuario — usar tras authenticateWithTelegram() */
 export const db = new Databases(sessionClient);
+
+/** Storage con sesión de usuario — para subir adjuntos */
+export const storage = new Storage(sessionClient);
 
 /** Client expuesto para que telegramAuth pueda crear sesiones */
 export { sessionClient };

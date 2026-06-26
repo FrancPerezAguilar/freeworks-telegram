@@ -11,12 +11,13 @@ import {
   getMaterialesUsados, addMaterialUsado, deleteMaterialUsado,
   updateChecklistItem, addChecklistItem, deleteChecklistItem,
   getComentarios, addComentario, deleteComentario,
+  getAdjuntos, uploadAdjunto, deleteAdjunto,
 } from "../api/trabajos";
 import type { Trabajo, ChecklistItem } from "../api/trabajos";
 import { useTelegramBackButton } from "../lib/TelegramContext";
 import {
   ArrowLeft, Info, Hammer, Package, CheckSquare,
-  Clock, Plus, Trash2, MessageSquare,
+  Clock, Plus, Trash2, MessageSquare, Paperclip, FileText, Image,
 } from "lucide-react";
 
 // ── Helpers ───────────────────────────────────────────────────
@@ -178,6 +179,7 @@ function InfoSection({ local, updateLocal }: {
 
       {/* ── Comentarios dentro de Info ── */}
       <ComentariosSection trabajoId={local.appwrite_id ?? ""} />
+      <AdjuntosSection trabajoId={local.appwrite_id ?? ""} />
     </div>
   );
 }
@@ -186,20 +188,12 @@ function InfoSection({ local, updateLocal }: {
 
 function ComentariosSection({ trabajoId }: { trabajoId: string }) {
   const queryClient = useQueryClient();
-  const [texto, setTexto] = useState("");
 
   const { data: comentarios = [] } = useQuery({
     queryKey: ["comentarios", trabajoId],
     queryFn: () => getComentarios("trabajo", trabajoId),
     enabled: !!trabajoId,
   });
-
-  const handleAdd = async () => {
-    if (!texto.trim()) return;
-    await addComentario("trabajo", trabajoId, { contenido: texto.trim() });
-    setTexto("");
-    queryClient.invalidateQueries({ queryKey: ["comentarios", trabajoId] });
-  };
 
   return (
     <div className="rounded-xl p-3 mt-1" style={{ background: "var(--tg-theme-secondary_bg_color)" }}>
@@ -232,23 +226,86 @@ function ComentariosSection({ trabajoId }: { trabajoId: string }) {
           ))}
         </div>
       )}
-
-      {/* Input */}
-      <div className="flex gap-2">
-        <input type="text" value={texto} onChange={(e) => setTexto(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") handleAdd(); }}
-          placeholder="Escribe un comentario…"
-          className="flex-1 bg-transparent text-sm py-1.5 px-2 rounded-md outline-none"
-          style={inputStyle} />
-        <button onClick={handleAdd} disabled={!texto.trim()}
-          className="text-sm py-1 px-3 rounded-md font-medium flex-shrink-0"
-          style={{ background: "var(--tg-theme-button_color)", color: "var(--tg-theme-button_text_color)", opacity: texto.trim() ? 1 : 0.4 }}>
-          Enviar
-        </button>
-      </div>
+      {/* Input movido a la barra inferior */}
     </div>
   );
 }
+
+// ── Sección: Adjuntos ────────────────────────────────────────
+
+function AdjuntosSection({ trabajoId }: { trabajoId: string }) {
+  const queryClient = useQueryClient();
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const { data: adjuntos = [] } = useQuery({
+    queryKey: ["adjuntos", trabajoId],
+    queryFn: () => getAdjuntos("trabajo", trabajoId),
+    enabled: !!trabajoId,
+  });
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await uploadAdjunto("trabajo", trabajoId, file);
+    queryClient.invalidateQueries({ queryKey: ["adjuntos", trabajoId] });
+    if (fileRef.current) fileRef.current.value = "";
+  };
+
+  const tipoIcon = (tipo?: string) => {
+    if (tipo === "foto") return <Image className="h-4 w-4" />;
+    if (tipo === "pdf") return <FileText className="h-4 w-4" />;
+    return <Paperclip className="h-4 w-4" />;
+  };
+
+  return (
+    <div className="rounded-xl p-3 mt-1" style={{ background: "var(--tg-theme-secondary_bg_color)" }}>
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <Paperclip className="h-4 w-4" style={{ color: "var(--tg-theme-accent_text_color)" }} />
+          <span className="text-xs font-semibold" style={{ color: "var(--tg-theme-accent_text_color)" }}>Adjuntos</span>
+          {adjuntos.length > 0 && (
+            <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: "var(--tg-theme-button_color)", color: "var(--tg-theme-button_text_color)", opacity: 0.8 }}>
+              {adjuntos.length}
+            </span>
+          )}
+        </div>
+        <button onClick={() => fileRef.current?.click()} className="p-1 rounded-md active:opacity-70"
+          style={{ color: "var(--tg-theme-button_color)" }}>
+          <Plus className="h-4 w-4" />
+        </button>
+        <input ref={fileRef} type="file" onChange={handleUpload} className="hidden" />
+      </div>
+
+      {adjuntos.length === 0 ? (
+        <p className="text-xs text-center py-2" style={{ color: "var(--tg-theme-hint_color)", opacity: 0.4 }}>Sin archivos adjuntos</p>
+      ) : (
+        <div className="grid grid-cols-2 gap-2">
+          {adjuntos.map((a) => (
+            <a key={a.id} href={a.url} target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-2 p-2 rounded-lg group relative active:opacity-70"
+              style={{ background: "var(--tg-theme-bg_color)" }}>
+              <span style={{ color: "var(--tg-theme-accent_text_color)" }}>{tipoIcon(a.tipo)}</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs truncate" style={{ color: "var(--tg-theme-text_color)" }}>{a.nombre}</p>
+                {a.tamano && (
+                  <p className="text-xs" style={{ color: "var(--tg-theme-hint_color)" }}>
+                    {a.tamano > 1024 * 1024 ? `${(a.tamano / (1024 * 1024)).toFixed(1)} MB` : `${(a.tamano / 1024).toFixed(1)} KB`}
+                  </p>
+                )}
+              </div>
+              <button onClick={(ev) => { ev.preventDefault(); deleteAdjunto(a.appwrite_id); queryClient.invalidateQueries({ queryKey: ["adjuntos", trabajoId] }); }}
+                className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 p-0.5"
+                style={{ color: "var(--tg-theme-destructive_text_color)" }}>
+                <Trash2 className="h-3 w-3" />
+              </button>
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 // ── Sección: Tiempos ──────────────────────────────────────────
 
@@ -505,6 +562,8 @@ export default function TrabajoView({ trabajoId, onBack }: Props) {
   const queryClient = useQueryClient();
   const [local, setLocal] = useState<Partial<Trabajo> | null>(null);
   const [tab, setTab] = useState<TabId>("info");
+  const [comText, setComText] = useState("");
+  const fileRef = useRef<HTMLInputElement>(null);
   const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   useTelegramBackButton(!onBack);
@@ -556,6 +615,34 @@ export default function TrabajoView({ trabajoId, onBack }: Props) {
         {tab === "tiempos" && <TiemposSection trabajoId={trabajoId} />}
         {tab === "materiales" && <MaterialesSection trabajoId={trabajoId} />}
         {tab === "checklist" && <ChecklistSection trabajoId={trabajoId} />}
+      </div>
+
+      {/* Bottom bar: comentario + adjunto */}
+      <div className="flex items-center gap-2 px-3 py-2 border-t flex-shrink-0"
+        style={{ background: "var(--tg-theme-bg_color)", borderColor: "rgba(128,128,128,0.15)" }}>
+        <input type="text" value={comText} onChange={(e) => setComText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && comText.trim()) {
+              addComentario("trabajo", trabajoId!, { contenido: comText.trim() });
+              setComText("");
+              queryClient.invalidateQueries({ queryKey: ["comentarios", trabajoId] });
+            }
+          }}
+          placeholder="Comentario…"
+          className="flex-1 bg-transparent text-sm py-2 px-3 rounded-full outline-none"
+          style={{ background: "var(--tg-theme-secondary_bg_color)", color: "var(--tg-theme-text_color)" }} />
+        <button onClick={() => fileRef.current?.click()}
+          className="p-2 rounded-full active:opacity-70 flex-shrink-0"
+          style={{ color: "var(--tg-theme-hint_color)" }}>
+          <Paperclip className="h-5 w-5" />
+        </button>
+        <input ref={fileRef} type="file" onChange={async (e) => {
+          const file = e.target.files?.[0];
+          if (!file || !trabajoId) return;
+          await uploadAdjunto("trabajo", trabajoId, file);
+          queryClient.invalidateQueries({ queryKey: ["adjuntos", trabajoId] });
+          if (fileRef.current) fileRef.current.value = "";
+        }} className="hidden" />
       </div>
     </div>
   );
