@@ -5,7 +5,26 @@
 import { Query, Permission, Role } from "appwrite";
 import { db, DB, normalizeDoc, type AppwriteDoc } from "../lib/appwrite";
 
-const PERMS_ANY = [Permission.read(Role.any()), Permission.update(Role.any()), Permission.delete(Role.any())];
+import { getCurrentUserId } from "../lib/telegramAuth";
+
+/** Genera permisos para el usuario actual + admin (Franc) */
+async function getUserPerms(): Promise<string[]> {
+  const userId = await getCurrentUserId();
+  const base = userId ? [
+    Permission.read(Role.user(userId)),
+    Permission.update(Role.user(userId)),
+    Permission.delete(Role.user(userId)),
+  ] : [
+    Permission.read(Role.any()),
+    Permission.update(Role.any()),
+    Permission.delete(Role.any()),
+  ];
+  // Añadir a Franc como admin en todos los docs
+  base.push(Permission.read(Role.user("6a3abbe6001bea1b9386")));
+  base.push(Permission.update(Role.user("6a3abbe6001bea1b9386")));
+  base.push(Permission.delete(Role.user("6a3abbe6001bea1b9386")));
+  return base;
+}
 
 // ── Tipos ─────────────────────────────────────────────────────
 
@@ -88,7 +107,7 @@ export async function updateChecklistItem(appwriteId: string, data: { completado
 export async function addChecklistItem(trabajoId: string, descripcion: string): Promise<void> {
   await db.createDocument(DB, "trabajo_checklist", "unique()", {
     trabajo_id: trabajoId, descripcion, completado: false,
-  } as Record<string, unknown>, PERMS_ANY);
+  } as Record<string, unknown>, await getUserPerms());
 }
 
 export async function deleteChecklistItem(appwriteId: string): Promise<void> {
@@ -118,7 +137,7 @@ export async function addComentario(entityType: string, entityId: string, data: 
     entity_type: entityType, entity_id: entityId,
     contenido: data.contenido, autor: data.autor ?? "Usuario",
     fecha: new Date().toISOString(),
-  } as Record<string, unknown>, PERMS_ANY);
+  } as Record<string, unknown>, await getUserPerms());
 }
 
 export async function deleteComentario(appwriteId: string): Promise<void> {
@@ -144,7 +163,7 @@ export async function getTiempos(trabajoId: string): Promise<TiempoItem[]> {
 export async function addTiempo(trabajoId: string, data: { horas: number; descripcion?: string; fecha?: string }): Promise<void> {
   await db.createDocument(DB, "trabajo_tiempos", "unique()", {
     trabajo_id: trabajoId, ...data,
-  } as Record<string, unknown>, PERMS_ANY);
+  } as Record<string, unknown>, await getUserPerms());
 }
 
 export async function deleteTiempo(appwriteId: string): Promise<void> {
@@ -173,7 +192,7 @@ export async function addMaterialUsado(trabajoId: string, data: {
   const importe = (data.cantidad ?? 0) * (data.precio_unitario ?? 0);
   await db.createDocument(DB, "trabajo_materiales", "unique()", {
     trabajo_id: trabajoId, ...data, importe,
-  } as Record<string, unknown>, PERMS_ANY);
+  } as Record<string, unknown>, await getUserPerms());
 }
 
 export async function deleteMaterialUsado(appwriteId: string): Promise<void> {
@@ -252,7 +271,7 @@ export async function uploadAdjunto(entityType: string, entityId: string, file: 
     entity_type: entityType, entity_id: entityId,
     nombre: file.name, tipo, tamano: file.size,
     bucket_file_id: uploaded.$id,
-  } as Record<string, unknown>, PERMS_ANY);
+  } as Record<string, unknown>, await getUserPerms());
 }
 
 export async function deleteAdjunto(appwriteId: string): Promise<void> {

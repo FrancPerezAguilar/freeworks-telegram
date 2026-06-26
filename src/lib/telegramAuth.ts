@@ -120,6 +120,14 @@ export async function getCurrentSession(): Promise<Models.User<Models.Preference
   try { return await account.get(); } catch { return null; }
 }
 
+/** Obtiene el userId del usuario autenticado actual */
+export async function getCurrentUserId(): Promise<string | null> {
+  try {
+    const user = await account.get();
+    return user.$id;
+  } catch { return null; }
+}
+
 export async function logout(): Promise<void> {
   try { await account.deleteSessions(); } catch { /* noop */ }
 }
