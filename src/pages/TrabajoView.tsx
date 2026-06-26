@@ -10,12 +10,13 @@ import {
   getTiempos, addTiempo, deleteTiempo,
   getMaterialesUsados, addMaterialUsado, deleteMaterialUsado,
   updateChecklistItem, addChecklistItem, deleteChecklistItem,
+  getComentarios, addComentario, deleteComentario,
 } from "../api/trabajos";
 import type { Trabajo, ChecklistItem } from "../api/trabajos";
 import { useTelegramBackButton } from "../lib/TelegramContext";
 import {
   ArrowLeft, Info, Hammer, Package, CheckSquare,
-  Clock, Plus, Trash2,
+  Clock, Plus, Trash2, MessageSquare,
 } from "lucide-react";
 
 // ── Helpers ───────────────────────────────────────────────────
@@ -174,6 +175,77 @@ function InfoSection({ local, updateLocal }: {
         <Field label="Coste total (€)" type="number" value={local.coste_total?.toString() ?? ""} onChange={(v) => updateLocal("coste_total", parseFloat(v) || 0)} />
       </div>
       <Field label="Notas" value={local.notas ?? ""} onChange={(v) => updateLocal("notas", v)} multiline />
+
+      {/* ── Comentarios dentro de Info ── */}
+      <ComentariosSection trabajoId={local.appwrite_id ?? ""} />
+    </div>
+  );
+}
+
+// ── Sección: Comentarios ──────────────────────────────────────
+
+function ComentariosSection({ trabajoId }: { trabajoId: string }) {
+  const queryClient = useQueryClient();
+  const [texto, setTexto] = useState("");
+
+  const { data: comentarios = [] } = useQuery({
+    queryKey: ["comentarios", trabajoId],
+    queryFn: () => getComentarios("trabajo", trabajoId),
+    enabled: !!trabajoId,
+  });
+
+  const handleAdd = async () => {
+    if (!texto.trim()) return;
+    await addComentario("trabajo", trabajoId, { contenido: texto.trim() });
+    setTexto("");
+    queryClient.invalidateQueries({ queryKey: ["comentarios", trabajoId] });
+  };
+
+  return (
+    <div className="rounded-xl p-3 mt-1" style={{ background: "var(--tg-theme-secondary_bg_color)" }}>
+      <div className="flex items-center gap-2 mb-2">
+        <MessageSquare className="h-4 w-4" style={{ color: "var(--tg-theme-accent_text_color)" }} />
+        <span className="text-xs font-semibold" style={{ color: "var(--tg-theme-accent_text_color)" }}>Comentarios</span>
+        {comentarios.length > 0 && (
+          <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: "var(--tg-theme-button_color)", color: "var(--tg-theme-button_text_color)", opacity: 0.8 }}>
+            {comentarios.length}
+          </span>
+        )}
+      </div>
+
+      {/* Lista */}
+      {comentarios.length > 0 && (
+        <div className="flex flex-col gap-2 mb-3">
+          {comentarios.map((c) => (
+            <div key={c.id} className="flex items-start gap-2 group">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm whitespace-pre-wrap" style={{ color: "var(--tg-theme-text_color)" }}>{c.contenido}</p>
+                <p className="text-xs mt-0.5" style={{ color: "var(--tg-theme-hint_color)" }}>
+                  {c.autor || "Usuario"} · {c.fecha ? new Date(c.fecha).toLocaleDateString("es-ES", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : ""}
+                </p>
+              </div>
+              <button onClick={() => { deleteComentario(c.appwrite_id); queryClient.invalidateQueries({ queryKey: ["comentarios", trabajoId] }); }}
+                className="opacity-0 group-hover:opacity-100 p-0.5 flex-shrink-0" style={{ color: "var(--tg-theme-destructive_text_color)" }}>
+                <Trash2 className="h-3 w-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Input */}
+      <div className="flex gap-2">
+        <input type="text" value={texto} onChange={(e) => setTexto(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") handleAdd(); }}
+          placeholder="Escribe un comentario…"
+          className="flex-1 bg-transparent text-sm py-1.5 px-2 rounded-md outline-none"
+          style={inputStyle} />
+        <button onClick={handleAdd} disabled={!texto.trim()}
+          className="text-sm py-1 px-3 rounded-md font-medium flex-shrink-0"
+          style={{ background: "var(--tg-theme-button_color)", color: "var(--tg-theme-button_text_color)", opacity: texto.trim() ? 1 : 0.4 }}>
+          Enviar
+        </button>
+      </div>
     </div>
   );
 }

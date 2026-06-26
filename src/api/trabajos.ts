@@ -93,6 +93,36 @@ export async function deleteChecklistItem(appwriteId: string): Promise<void> {
   await db.deleteDocument(DB, "trabajo_checklist", appwriteId);
 }
 
+
+// ── Comentarios ───────────────────────────────────────────────
+
+export interface ComentarioItem {
+  id: number; appwrite_id: string;
+  entity_type: string; entity_id: string;
+  contenido: string; autor?: string; fecha?: string;
+}
+
+export async function getComentarios(entityType: string, entityId: string): Promise<ComentarioItem[]> {
+  const res = await db.listDocuments(DB, "comentarios", [
+    Query.equal("entity_type", entityType),
+    Query.equal("entity_id", entityId),
+    Query.orderAsc("fecha"),
+  ]);
+  return res.documents.map((d) => normalizeDoc<ComentarioItem>(d as AppwriteDoc));
+}
+
+export async function addComentario(entityType: string, entityId: string, data: { contenido: string; autor?: string }): Promise<void> {
+  await db.createDocument(DB, "comentarios", "unique()", {
+    entity_type: entityType, entity_id: entityId,
+    contenido: data.contenido, autor: data.autor ?? "Usuario",
+    fecha: new Date().toISOString(),
+  } as Record<string, unknown>);
+}
+
+export async function deleteComentario(appwriteId: string): Promise<void> {
+  await db.deleteDocument(DB, "comentarios", appwriteId);
+}
+
 // ── Tiempos ───────────────────────────────────────────────────
 
 export interface TiempoItem {
