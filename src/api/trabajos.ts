@@ -58,12 +58,13 @@ export async function getTrabajo(id: string): Promise<Trabajo> {
 }
 
 export async function getTrabajos(params?: {
-  estado?: string; limite?: number;
+  estado?: string; search?: string; limite?: number;
 }): Promise<Trabajo[]> {
   const queries: string[] = [];
   if (params?.estado) queries.push(Query.equal("estado", params.estado));
+  if (params?.search) queries.push(Query.search("titulo", params.search));
   queries.push(Query.orderDesc("fecha_inicio"));
-  queries.push(Query.limit(params?.limite ?? 20));
+  queries.push(Query.limit(params?.limite ?? 50));
 
   const res = await db.listDocuments(DB, "trabajos", queries);
   return res.documents.map((d) => normalizeDoc<Trabajo>(d as AppwriteDoc));

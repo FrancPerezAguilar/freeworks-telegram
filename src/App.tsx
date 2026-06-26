@@ -5,7 +5,8 @@ import { authenticateWithTelegram, type AuthResult } from "./lib/telegramAuth";
 import DashboardView from "./pages/DashboardView";
 import AgendaView from "./pages/AgendaView";
 import TrabajoView from "./pages/TrabajoView";
-import { LayoutDashboard, Calendar } from "lucide-react";
+import TrabajosListView from "./pages/TrabajosListView";
+import { LayoutDashboard, Calendar, Wrench } from "lucide-react";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
@@ -43,11 +44,12 @@ function AuthError({ message, onRetry }: { message: string; onRetry: () => void 
 
 // ── Tab bar ───────────────────────────────────────────────────
 
-type View = "dashboard" | "agenda" | "trabajo";
+type View = "dashboard" | "agenda" | "trabajos" | "trabajo";
 
 function TabBar({ active, onSelect }: { active: View; onSelect: (v: View) => void }) {
   const tabs: { id: View; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
     { id: "dashboard", label: "Inicio", icon: LayoutDashboard },
+    { id: "trabajos", label: "Trabajos", icon: Wrench },
     { id: "agenda", label: "Agenda", icon: Calendar },
   ];
 
@@ -127,11 +129,16 @@ export default function App() {
   if (!isTelegram) {
     return (
       <QueryClientProvider client={queryClient}>
-        {selectedTrabajoId ? (
+        {view === "trabajo" && selectedTrabajoId ? (
           <TrabajoView trabajoId={selectedTrabajoId} onBack={handleBack} />
+        ) : view === "agenda" ? (
+          <AgendaView />
+        ) : view === "trabajos" ? (
+          <TrabajosListView onTrabajoClick={handleTrabajoClick} />
         ) : (
           <DashboardView onTrabajoClick={handleTrabajoClick} />
         )}
+        <TabBar active={view === "trabajo" ? "dashboard" : view} onSelect={(v) => { setView(v); setSelectedTrabajoId(null); }} />
       </QueryClientProvider>
     );
   }
@@ -149,6 +156,8 @@ export default function App() {
         <TrabajoView trabajoId={selectedTrabajoId} onBack={handleBack} />
       ) : view === "agenda" ? (
         <AgendaView />
+      ) : view === "trabajos" ? (
+        <TrabajosListView onTrabajoClick={handleTrabajoClick} />
       ) : (
         <DashboardView onTrabajoClick={handleTrabajoClick} />
       )}
