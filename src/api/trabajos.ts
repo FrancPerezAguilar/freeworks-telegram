@@ -4,7 +4,7 @@
  */
 
 import { Query } from "appwrite";
-import { db, DB, normalizeDoc, type AppwriteDoc } from "../lib/appwrite";
+import { serverDb, DB, normalizeDoc, type AppwriteDoc } from "../lib/appwrite";
 
 // ── Tipos ─────────────────────────────────────────────────────
 
@@ -27,10 +27,10 @@ export interface Trabajo {
 // ── API ───────────────────────────────────────────────────────
 
 export async function getTrabajo(id: string): Promise<Trabajo> {
-  const doc = await db.getDocument(DB, "trabajos", id);
+  const doc = await serverDb.getDocument(DB, "trabajos", id);
   const trabajo = normalizeDoc<Trabajo>(doc as AppwriteDoc);
 
-  const checklistRes = await db.listDocuments(DB, "trabajo_checklist", [
+  const checklistRes = await serverDb.listDocuments(DB, "trabajo_checklist", [
     Query.equal("trabajo_id", id),
     Query.orderAsc("fecha_programada"),
   ]);
