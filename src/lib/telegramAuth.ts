@@ -85,6 +85,9 @@ export async function authenticateWithTelegram(
   tgUser: WebAppUser
 ): Promise<AuthResult> {
   try {
+    // 0) Limpiar cualquier sesión previa para evitar "session is active"
+    try { await account.deleteSessions(); } catch { /* noop */ }
+
     // 1) Listar todos los usuarios y buscar por prefs.tg
     const allUsers = await listAllUsers();
     const existing = allUsers.find((u) => String(u.prefs?.tg) === String(tgUser.id));
