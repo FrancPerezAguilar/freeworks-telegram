@@ -134,7 +134,7 @@ export default function TrabajosListView({ onTrabajoClick }: Props) {
   }
 
   return (
-    <div className="flex flex-col gap-3 p-4 pb-20">
+    <div className={`flex flex-col gap-3 p-4 ${viewMode === "kanban" ? "h-[calc(100vh-3.5rem)]" : "pb-20"}`}>
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold" style={{ color: "var(--tg-theme-text_color)" }}>Trabajos</h1>
@@ -193,9 +193,9 @@ export default function TrabajosListView({ onTrabajoClick }: Props) {
 
       {/* Kanban view — columnas a ancho completo con scroll horizontal */}
       {viewMode === "kanban" && (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col flex-1 overflow-hidden" style={{ minHeight: 0 }}>
           {/* Column indicator dots */}
-          <div className="flex justify-center gap-1.5">
+          <div className="flex justify-center gap-1.5 py-1 flex-shrink-0">
             {COLUMNAS.map((col) => (
               <button
                 key={col.estado}
@@ -209,18 +209,19 @@ export default function TrabajosListView({ onTrabajoClick }: Props) {
             ))}
           </div>
 
-          {/* Scrollable columns */}
+          {/* Scrollable columns — ocupan todo el alto disponible */}
           <div
-            className="flex gap-3 overflow-x-auto snap-x snap-mandatory"
+            className="flex gap-3 overflow-x-auto snap-x snap-mandatory flex-1"
             style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
           >
             {COLUMNAS.map((col) => (
               <div
                 key={col.estado}
                 id={`kanban-col-${col.estado}`}
-                className="flex-shrink-0 w-[calc(100vw-2rem)] snap-center"
+                className="flex-shrink-0 w-[calc(100vw-2rem)] snap-center flex flex-col"
+                style={{ minHeight: 0 }}
               >
-                <div className="flex items-center gap-2 mb-3 px-1">
+                <div className="flex items-center gap-2 mb-2 px-1 flex-shrink-0">
                   <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: col.color }} />
                   <span className="text-sm font-bold" style={{ color: "var(--tg-theme-text_color)" }}>
                     {col.titulo}
@@ -229,12 +230,12 @@ export default function TrabajosListView({ onTrabajoClick }: Props) {
                     {kanbanGrupos[col.estado]?.length ?? 0}
                   </span>
                 </div>
-                <div className="rounded-xl p-2 min-h-[300px]" style={{ background: "var(--tg-theme-secondary_bg_color)" }}>
+                <div className="rounded-xl p-2 flex-1 overflow-y-auto" style={{ background: "var(--tg-theme-secondary_bg_color)" }}>
                   {kanbanGrupos[col.estado]?.map((t) => (
                     <KanbanCard key={t.id} trabajo={t} onClick={() => onTrabajoClick(t.appwrite_id)} />
                   ))}
                   {(!kanbanGrupos[col.estado] || kanbanGrupos[col.estado].length === 0) && (
-                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <div className="flex flex-col items-center justify-center h-full text-center">
                       <Wrench className="h-8 w-8 mb-2 opacity-20" style={{ color: col.color }} />
                       <p className="text-xs" style={{ color: "var(--tg-theme-hint_color)", opacity: 0.5 }}>
                         Sin trabajos {col.titulo.toLowerCase()}
@@ -245,11 +246,6 @@ export default function TrabajosListView({ onTrabajoClick }: Props) {
               </div>
             ))}
           </div>
-
-          {/* Swipe hint */}
-          <p className="text-xs text-center opacity-40" style={{ color: "var(--tg-theme-hint_color)" }}>
-            ← desliza para ver más columnas →
-          </p>
         </div>
       )}
     </div>
