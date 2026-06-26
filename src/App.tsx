@@ -7,6 +7,8 @@ import AgendaView from "./pages/AgendaView";
 import TrabajoView from "./pages/TrabajoView";
 import TrabajosListView from "./pages/TrabajosListView";
 import MisTareasView from "./pages/MisTareasView";
+import ClientesListView from "./pages/ClientesListView";
+import ClienteDetailView from "./pages/ClienteDetailView";
 import { LayoutDashboard, Calendar, Wrench, CheckSquare } from "lucide-react";
 
 const queryClient = new QueryClient({
@@ -45,7 +47,7 @@ function AuthError({ message, onRetry }: { message: string; onRetry: () => void 
 
 // ── Tab bar ───────────────────────────────────────────────────
 
-type View = "dashboard" | "agenda" | "trabajos" | "mistareas" | "trabajo";
+type View = "dashboard" | "agenda" | "trabajos" | "mistareas" | "trabajo" | "clientes" | "cliente";
 
 function TabBar({ active, onSelect }: { active: View; onSelect: (v: View) => void }) {
   const tabs: { id: View; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
@@ -93,6 +95,7 @@ export default function App() {
   // Navegación
   const [view, setView] = useState<View>("dashboard");
   const [selectedTrabajoId, setSelectedTrabajoId] = useState<string | null>(null);
+  const [selectedClienteId, setSelectedClienteId] = useState<string | null>(null);
 
   // Leer params de deep link: ?trabajo_id=ID | ?tab=agenda|trabajos
   useEffect(() => {
@@ -130,7 +133,12 @@ export default function App() {
   const handleBack = useCallback(() => {
     setView("dashboard");
     setSelectedTrabajoId(null);
+    setSelectedClienteId(null);
   }, []);
+
+  const handleClientesClick = useCallback(() => { setView("clientes"); }, []);
+  const handleClienteClick = useCallback((id: string) => { setSelectedClienteId(id); setView("cliente"); }, []);
+  const handleBackFromCliente = useCallback(() => { setView("clientes"); }, []);
 
   // No Telegram → mostrar sin auth
   if (!isTelegram) {
@@ -143,7 +151,7 @@ export default function App() {
         ) : view === "trabajos" ? (
           <TrabajosListView onTrabajoClick={handleTrabajoClick} />
         ) : (
-          <DashboardView onTrabajoClick={handleTrabajoClick} />
+          <DashboardView onTrabajoClick={handleTrabajoClick} onClientesClick={handleClientesClick} />
         )}
         {view !== "trabajo" && <TabBar active={view} onSelect={(v) => { setView(v); setSelectedTrabajoId(null); }} />}
       </QueryClientProvider>
@@ -159,7 +167,11 @@ export default function App() {
   // Telegram: autenticado
   return (
     <QueryClientProvider client={queryClient}>
-      {view === "trabajo" && selectedTrabajoId ? (
+      {view === "clientes" ? (
+        <ClientesListView onBack={handleBack} onClienteClick={handleClienteClick} />
+      ) : view === "cliente" && selectedClienteId ? (
+        <ClienteDetailView clienteId={selectedClienteId} onBack={handleBackFromCliente} onTrabajoClick={handleTrabajoClick} />
+      ) : view === "trabajo" && selectedTrabajoId ? (
         <TrabajoView trabajoId={selectedTrabajoId} onBack={handleBack} />
       ) : view === "agenda" ? (
         <AgendaView />
@@ -168,7 +180,7 @@ export default function App() {
       ) : view === "mistareas" ? (
         <MisTareasView onTrabajoClick={handleTrabajoClick} />
       ) : (
-        <DashboardView onTrabajoClick={handleTrabajoClick} />
+        <DashboardView onTrabajoClick={handleTrabajoClick} onClientesClick={handleClientesClick} />
       )}
       {view !== "trabajo" && <TabBar active={view} onSelect={(v) => { setView(v); setSelectedTrabajoId(null); }} />}
     </QueryClientProvider>

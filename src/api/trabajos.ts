@@ -48,10 +48,13 @@ export interface Trabajo {
 }
 
 export interface Cliente {
-  id: number; nombre: string; apellidos?: string;
+  id: number; appwrite_id: string;
+  nombre: string; apellidos?: string;
   telefono_principal?: string; email?: string;
+  direccion_calle?: string; direccion_numero?: string;
   direccion_municipio?: string; direccion_provincia?: string;
   estado?: string; activo?: boolean;
+  notas?: string;
 }
 
 export interface CalendarioEvento {
@@ -217,13 +220,28 @@ export async function getTecnicos(): Promise<TecnicoItem[]> {
 
 // ── Clientes ──────────────────────────────────────────────────
 
-export async function getClientes(): Promise<Cliente[]> {
-  const res = await db.listDocuments(DB, "clientes", [
-    Query.equal("activo", true),
-    Query.orderAsc("nombre"),
-    Query.limit(50),
-  ]);
+export async function getClientes(search?: string): Promise<Cliente[]> {
+  const queries: string[] = [Query.orderAsc("nombre"), Query.limit(50)];
+  if (search) {
+    queries.push(Query.search("nombre", search));
+  }
+  const res = await db.listDocuments(DB, "clientes", queries);
   return res.documents.map((d) => normalizeDoc<Cliente>(d as AppwriteDoc));
+}
+
+export async function getCliente(id: string): Promise<Cliente> {
+  const doc = await db.getDocument(DB, "clientes", id);
+  return normalizeDoc<Cliente>(doc as AppwriteDoc);
+}
+
+/** Busca trabajos vinculados a un cliente */
+export async function getTrabajosDeCliente(clienteId: string): Promise<Trabajo[]> {
+  const res = await db.listDocuments(DB, "trabajos", [
+    Query.equal("cliente_id", clienteId),
+    Query.orderDesc("fecha_inicio"),
+    Query.limit(20),
+  ]);
+  return res.documents.map((d) => normalizeDoc<Trabajo>(d as AppwriteDoc));
 }
 
 

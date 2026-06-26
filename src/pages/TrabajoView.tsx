@@ -12,8 +12,9 @@ import {
   updateChecklistItem, addChecklistItem, deleteChecklistItem,
   getComentarios, addComentario, deleteComentario,
   getAdjuntos, uploadAdjunto, deleteAdjunto,
+  getClientes,
 } from "../api/trabajos";
-import type { Trabajo, ChecklistItem } from "../api/trabajos";
+import type { Trabajo, ChecklistItem, Cliente } from "../api/trabajos";
 import { useTelegramBackButton } from "../lib/TelegramContext";
 import {
   ArrowLeft, Info, Hammer, Package, CheckSquare,
@@ -241,6 +242,87 @@ function AddressAutocomplete({ calle, numero, municipio, provincia, onChange }: 
   );
 }
 
+
+// ── Cliente Selector (autocomplete) ───────────────────────────
+
+function ClienteSelector({ clienteId, clienteNombre, onChange }: {
+  clienteId: string; clienteNombre: string;
+  onChange: (id: string, nombre: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<Cliente[]>([]);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  const search = (q: string) => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    if (q.length < 2) { setResults([]); return; }
+    timerRef.current = setTimeout(async () => {
+      try {
+        const r = await getClientes(q);
+        setResults(r);
+      } catch { setResults([]); }
+    }, 300);
+  };
+
+  const select = (c: Cliente) => {
+    onChange(c.appwrite_id, c.nombre + (c.apellidos ? " " + c.apellidos : ""));
+    setQuery("");
+    setResults([]);
+    setEditing(false);
+  };
+
+  const clear = () => {
+    onChange("", "");
+    setEditing(false);
+  };
+
+  if (!editing) {
+    return (
+      <div className="flex flex-col gap-0.5">
+        <span className="text-xs font-medium" style={{ color: "var(--tg-theme-hint_color)" }}>Cliente</span>
+        <div className="flex items-center gap-1">
+          <button onClick={() => setEditing(true)}
+            className="flex-1 text-left text-sm py-1 px-2 rounded-md border border-transparent hover:border-gray-200 transition-colors truncate group cursor-pointer"
+            style={{ color: clienteNombre ? "var(--tg-theme-text_color)" : "var(--tg-theme-hint_color)", opacity: clienteNombre ? 1 : 0.5, background: "var(--tg-theme-secondary_bg_color)" }}>
+            {clienteNombre || "Sin cliente"}
+            <span className="inline-block ml-2 text-xs opacity-0 group-hover:opacity-30" style={{ color: "var(--tg-theme-hint_color)" }}>✎</span>
+          </button>
+          {clienteId && (
+            <button onClick={clear} className="p-1 rounded active:opacity-70" style={{ color: "var(--tg-theme-hint_color)" }}>✕</button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-0.5 relative">
+      <span className="text-xs font-medium" style={{ color: "var(--tg-theme-accent_text_color)" }}>Cliente</span>
+      <input type="text" value={query} onChange={(e) => { setQuery(e.target.value); search(e.target.value); }}
+        onBlur={() => setTimeout(() => { setEditing(false); setResults([]); }, 200)}
+        onKeyDown={(e) => { if (e.key === "Escape") { setEditing(false); setResults([]); } }}
+        placeholder="Buscar cliente…"
+        className="w-full bg-transparent text-sm py-1 px-2 rounded-md outline-none"
+        style={inputStyle} autoFocus />
+      {results.length > 0 && (
+        <div className="absolute top-full left-0 right-0 z-30 rounded-lg shadow-lg max-h-48 overflow-y-auto mt-1"
+          style={{ background: "var(--tg-theme-bg_color)", border: "1px solid rgba(128,128,128,0.15)" }}>
+          {results.map((c) => (
+            <button key={c.id} onMouseDown={() => select(c)}
+              className="w-full text-left text-sm py-2 px-3 hover:opacity-80 active:opacity-60 border-b last:border-b-0"
+              style={{ color: "var(--tg-theme-text_color)", borderColor: "rgba(128,128,128,0.1)" }}>
+              <span className="font-medium">{c.nombre} {c.apellidos || ""}</span>
+              {c.direccion_municipio && <span className="text-xs ml-2 opacity-50">{c.direccion_municipio}</span>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 // ── Sección: Info ─────────────────────────────────────────────
 
 function InfoSection({ local, updateLocal }: {
@@ -258,7 +340,14 @@ function InfoSection({ local, updateLocal }: {
           options={{ baja: "Baja", media: "Media", alta: "Alta", urgente: "Urgente" }}
           onChange={(v) => updateLocal("prioridad", v)} />
       </div>
-      <Field label="Cliente" value={local.cliente_nombre ?? ""} onChange={(v) => updateLocal("cliente_nombre", v)} />
+      <ClienteSelector
+        clienteId={local.cliente_id ?? ""}
+        clienteNombre={local.cliente_nombre ?? ""}
+        onChange={(id, nombre) => {
+          updateLocal("cliente_id", id);
+          updateLocal("cliente_nombre", nombre);
+        }}
+      />
       <div className="grid grid-cols-2 gap-2">
         <Field label="Fecha inicio" type="date" value={toInputDate(local.fecha_inicio)} onChange={(v) => updateLocal("fecha_inicio", v)} />
         <Field label="Fin estimado" type="date" value={toInputDate(local.fecha_fin_estimada)} onChange={(v) => updateLocal("fecha_fin_estimada", v)} />

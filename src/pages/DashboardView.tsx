@@ -85,11 +85,12 @@ function TrabajoRow({ trabajo, onClick }: { trabajo: Trabajo; onClick?: () => vo
 
 // ── Vista ─────────────────────────────────────────────────────
 
-interface DashboardViewProps {
-  onTrabajoClick?: (id: string) => void;
+interface Props {
+  onTrabajoClick: (id: string) => void;
+  onClientesClick: () => void;
 }
 
-export default function DashboardView({ onTrabajoClick }: DashboardViewProps) {
+export default function DashboardView({ onTrabajoClick, onClientesClick }: Props) {
   const hoy = hoyISO();
 
   const { data: trabajos = [] } = useQuery({
@@ -98,7 +99,7 @@ export default function DashboardView({ onTrabajoClick }: DashboardViewProps) {
   });
   const { data: clientes = [] } = useQuery({
     queryKey: ["clientes"],
-    queryFn: getClientes,
+    queryFn: () => getClientes(),
   });
   const { data: checklist = [] } = useQuery({
     queryKey: ["checklist", "pendiente"],
@@ -130,7 +131,9 @@ export default function DashboardView({ onTrabajoClick }: DashboardViewProps) {
         <StatCard icon={Wrench} label="Pendientes" value={pendientes} color="#f59e0b" />
         <StatCard icon={Wrench} label="En curso" value={enCurso} color="#3b82f6" />
         <StatCard icon={CheckSquare} label="Tareas" value={tareasPendientes} color="#10b981" />
-        <StatCard icon={Users} label="Clientes" value={totalClientes} color="#8b5cf6" />
+        <button onClick={onClientesClick} className="w-full active:opacity-70">
+          <StatCard icon={Users} label="Clientes" value={totalClientes} color="#8b5cf6" />
+        </button>
       </div>
 
       {/* Hoy */}
