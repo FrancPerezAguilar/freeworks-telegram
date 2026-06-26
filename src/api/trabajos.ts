@@ -2,8 +2,10 @@
  * API calls para la Mini App — Appwrite SDK con sesión de usuario (db).
  */
 
-import { Query } from "appwrite";
+import { Query, Permission, Role } from "appwrite";
 import { db, DB, normalizeDoc, type AppwriteDoc } from "../lib/appwrite";
+
+const PERMS_ANY = [Permission.read(Role.any()), Permission.update(Role.any()), Permission.delete(Role.any())];
 
 // ── Tipos ─────────────────────────────────────────────────────
 
@@ -86,7 +88,7 @@ export async function updateChecklistItem(appwriteId: string, data: { completado
 export async function addChecklistItem(trabajoId: string, descripcion: string): Promise<void> {
   await db.createDocument(DB, "trabajo_checklist", "unique()", {
     trabajo_id: trabajoId, descripcion, completado: false,
-  } as Record<string, unknown>);
+  } as Record<string, unknown>, PERMS_ANY);
 }
 
 export async function deleteChecklistItem(appwriteId: string): Promise<void> {
@@ -116,7 +118,7 @@ export async function addComentario(entityType: string, entityId: string, data: 
     entity_type: entityType, entity_id: entityId,
     contenido: data.contenido, autor: data.autor ?? "Usuario",
     fecha: new Date().toISOString(),
-  } as Record<string, unknown>);
+  } as Record<string, unknown>, PERMS_ANY);
 }
 
 export async function deleteComentario(appwriteId: string): Promise<void> {
@@ -142,7 +144,7 @@ export async function getTiempos(trabajoId: string): Promise<TiempoItem[]> {
 export async function addTiempo(trabajoId: string, data: { horas: number; descripcion?: string; fecha?: string }): Promise<void> {
   await db.createDocument(DB, "trabajo_tiempos", "unique()", {
     trabajo_id: trabajoId, ...data,
-  } as Record<string, unknown>);
+  } as Record<string, unknown>, PERMS_ANY);
 }
 
 export async function deleteTiempo(appwriteId: string): Promise<void> {
@@ -171,7 +173,7 @@ export async function addMaterialUsado(trabajoId: string, data: {
   const importe = (data.cantidad ?? 0) * (data.precio_unitario ?? 0);
   await db.createDocument(DB, "trabajo_materiales", "unique()", {
     trabajo_id: trabajoId, ...data, importe,
-  } as Record<string, unknown>);
+  } as Record<string, unknown>, PERMS_ANY);
 }
 
 export async function deleteMaterialUsado(appwriteId: string): Promise<void> {
@@ -250,7 +252,7 @@ export async function uploadAdjunto(entityType: string, entityId: string, file: 
     entity_type: entityType, entity_id: entityId,
     nombre: file.name, tipo, tamano: file.size,
     bucket_file_id: uploaded.$id,
-  } as Record<string, unknown>);
+  } as Record<string, unknown>, PERMS_ANY);
 }
 
 export async function deleteAdjunto(appwriteId: string): Promise<void> {
