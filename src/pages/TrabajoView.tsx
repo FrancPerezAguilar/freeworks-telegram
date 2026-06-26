@@ -175,8 +175,6 @@ function InfoSection({ local, updateLocal }: {
         <Field label="Total horas" type="number" value={local.total_horas?.toString() ?? ""} onChange={(v) => updateLocal("total_horas", parseFloat(v) || 0)} />
         <Field label="Coste total (€)" type="number" value={local.coste_total?.toString() ?? ""} onChange={(v) => updateLocal("coste_total", parseFloat(v) || 0)} />
       </div>
-      <Field label="Notas" value={local.notas ?? ""} onChange={(v) => updateLocal("notas", v)} multiline />
-
       {/* ── Comentarios dentro de Info ── */}
       <ComentariosSection trabajoId={local.appwrite_id ?? ""} />
       <AdjuntosSection trabajoId={local.appwrite_id ?? ""} />
