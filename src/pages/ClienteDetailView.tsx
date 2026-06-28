@@ -1,11 +1,13 @@
 /**
- * ClienteDetailView — vista completa de un cliente + sus trabajos.
+ * ClienteDetailView — vista editable de cliente (click-to-edit, estilo TrabajoView).
  */
 
-import { useQuery } from "@tanstack/react-query";
-import { getCliente, getTrabajosDeCliente } from "../api/trabajos";
+import { useState, useCallback, useEffect, useRef } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getCliente, updateCliente, getTrabajosDeCliente } from "../api/trabajos";
+import type { Cliente } from "../api/trabajos";
 import { ESTADOS } from "../lib/constants";
-import { Phone, Mail, MapPin, ChevronRight, ArrowLeft } from "lucide-react";
+import { Phone, MapPin, ChevronRight, ArrowLeft, MessageSquare } from "lucide-react";
 
 interface Props {
   clienteId: string;
@@ -13,7 +15,83 @@ interface Props {
   onTrabajoClick: (id: string) => void;
 }
 
+// ── Click-to-edit Field (same pattern as TrabajoView) ───────────
+
+const inputStyle: React.CSSProperties = {
+  color: "var(--tg-theme-text_color)",
+  boxShadow: "0 0 0 1px var(--tg-theme-button_color)",
+  background: "transparent",
+  resize: "none",
+};
+
+function Field({ label, value, onChange, onBlur, type = "text", multiline, placeholder }: {
+  label: string; value: string; onChange: (v: string) => void; onBlur?: () => void;
+  type?: string; multiline?: boolean; placeholder?: string;
+}) {
+  const [editing, setEditing] = useState(false);
+  const ref = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
+  useEffect(() => {
+    if (editing && ref.current) { ref.current.focus(); if (!multiline) (ref.current as HTMLInputElement).select(); }
+  }, [editing, multiline]);
+
+  const display = value || placeholder || "—";
+  const isEmpty = !value;
+
+  if (!editing) {
+    const Tag = multiline ? "div" : "span";
+    return (
+      <div className="flex flex-col gap-0.5 cursor-pointer group" onClick={() => setEditing(true)}>
+        <span className="text-xs font-medium" style={{ color: "var(--tg-theme-hint_color)" }}>{label}</span>
+        <div className="flex items-center gap-1">
+          <Tag className={`text-sm py-1 px-2 rounded-md border border-transparent group-hover:border-gray-200 transition-colors ${multiline ? "whitespace-pre-wrap" : "truncate"}`}
+            style={{ color: isEmpty ? "var(--tg-theme-hint_color)" : "var(--tg-theme-text_color)", opacity: isEmpty ? 0.5 : 1, background: "var(--tg-theme-secondary_bg_color)" }}>
+            {display}
+          </Tag>
+          <span className="text-xs opacity-0 group-hover:opacity-30 flex-shrink-0" style={{ color: "var(--tg-theme-hint_color)" }}>✎</span>
+        </div>
+      </div>
+    );
+  }
+
+  const Tag = multiline ? "textarea" : "input";
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="text-xs font-medium" style={{ color: "var(--tg-theme-accent_text_color)" }}>{label}</span>
+      <Tag ref={ref as any} type={multiline ? undefined : type} value={value}
+        onChange={(e: any) => onChange(e.target.value)} onBlur={() => { setEditing(false); onBlur?.(); }}
+        onKeyDown={(e) => { if (e.key === "Escape") setEditing(false); }}
+        placeholder={placeholder ?? "—"}
+        className="w-full bg-transparent text-sm py-1 px-2 rounded-md outline-none"
+        style={inputStyle} rows={multiline ? 2 : undefined} autoFocus />
+    </div>
+  );
+}
+
+// ── Section wrapper ─────────────────────────────────────────────
+
+function Section({ icon: Icon, label, children }: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-xl p-3 flex flex-col gap-2" style={{ background: "var(--tg-theme-secondary_bg_color)" }}>
+      <div className="flex items-center gap-2">
+        <span style={{ color: "var(--tg-theme-accent_text_color)" }}>
+          <Icon className="h-4 w-4 flex-shrink-0" />
+        </span>
+        <span className="text-xs font-semibold" style={{ color: "var(--tg-theme-accent_text_color)" }}>{label}</span>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+// ── Main View ───────────────────────────────────────────────────
+
 export default function ClienteDetailView({ clienteId, onBack, onTrabajoClick }: Props) {
+  const queryClient = useQueryClient();
+
   const { data: cliente, isLoading } = useQuery({
     queryKey: ["cliente", clienteId],
     queryFn: () => getCliente(clienteId),
@@ -25,6 +103,15 @@ export default function ClienteDetailView({ clienteId, onBack, onTrabajoClick }:
     queryFn: () => getTrabajosDeCliente(clienteId),
     enabled: !!clienteId,
   });
+
+  const updateMutation = useMutation({
+    mutationFn: (data: Partial<Cliente>) => updateCliente(clienteId, data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["cliente", clienteId] }),
+  });
+
+  const handleUpdate = useCallback((field: string, value: string | null) => {
+    updateMutation.mutate({ [field]: value || null } as Partial<Cliente>);
+  }, [updateMutation]);
 
   if (isLoading || !cliente) {
     return (
@@ -46,52 +133,55 @@ export default function ClienteDetailView({ clienteId, onBack, onTrabajoClick }:
         </h1>
       </div>
 
-      {/* Content */}
+      {/* Editable fields */}
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
-        {/* Contacto */}
-        <div className="rounded-xl p-3" style={{ background: "var(--tg-theme-secondary_bg_color)" }}>
-          <span className="text-xs font-semibold" style={{ color: "var(--tg-theme-accent_text_color)" }}>Contacto</span>
-          <div className="mt-2 flex flex-col gap-2">
-            {cliente.telefono_principal && (
-              <div className="flex items-center gap-2 text-sm" style={{ color: "var(--tg-theme-text_color)" }}>
-                <Phone className="h-4 w-4 flex-shrink-0" style={{ color: "var(--tg-theme-hint_color)" }} />
-                <a href={`tel:${cliente.telefono_principal}`} className="active:opacity-70" style={{ color: "var(--tg-theme-link_color)" }}>
-                  {cliente.telefono_principal}
-                </a>
-              </div>
-            )}
-            {cliente.email && (
-              <div className="flex items-center gap-2 text-sm" style={{ color: "var(--tg-theme-text_color)" }}>
-                <Mail className="h-4 w-4 flex-shrink-0" style={{ color: "var(--tg-theme-hint_color)" }} />
-                <a href={`mailto:${cliente.email}`} className="active:opacity-70" style={{ color: "var(--tg-theme-link_color)" }}>
-                  {cliente.email}
-                </a>
-              </div>
-            )}
-          </div>
-        </div>
+        {/* ── Datos personales ── */}
+        <Section icon={({ className }) => <span className={className}>👤</span>} label="Datos personales">
+          <Field label="Nombre" value={cliente.nombre || ""}
+            onChange={(v) => handleUpdate("nombre", v || null)} placeholder="Nombre del cliente" />
+          <Field label="Apellidos" value={cliente.apellidos || ""}
+            onChange={(v) => handleUpdate("apellidos", v || null)} placeholder="Apellidos" />
+        </Section>
 
-        {/* Dirección */}
-        <div className="rounded-xl p-3" style={{ background: "var(--tg-theme-secondary_bg_color)" }}>
-          <span className="text-xs font-semibold" style={{ color: "var(--tg-theme-accent_text_color)" }}>Dirección</span>
-          <div className="mt-2 flex items-start gap-2 text-sm" style={{ color: "var(--tg-theme-text_color)" }}>
-            <MapPin className="h-4 w-4 flex-shrink-0 mt-0.5" style={{ color: "var(--tg-theme-hint_color)" }} />
-            <span>{[cliente.direccion_calle, cliente.direccion_numero].filter(Boolean).join(" ") || "—"}
-              {cliente.direccion_municipio && `, ${cliente.direccion_municipio}`}
-              {cliente.direccion_provincia && `, ${cliente.direccion_provincia}`}
-            </span>
-          </div>
-        </div>
+        {/* ── Contacto ── */}
+        <Section icon={Phone} label="Contacto">
+          <Field label="Teléfono" value={cliente.telefono_principal || ""} type="tel"
+            onChange={(v) => handleUpdate("telefono_principal", v || null)} placeholder="+34 600 000 000" />
+          <Field label="Email" value={cliente.email || ""} type="email"
+            onChange={(v) => handleUpdate("email", v || null)} placeholder="cliente@email.com" />
+        </Section>
 
-        {/* Notas */}
-        {cliente.notas && (
-          <div className="rounded-xl p-3" style={{ background: "var(--tg-theme-secondary_bg_color)" }}>
-            <span className="text-xs font-semibold" style={{ color: "var(--tg-theme-accent_text_color)" }}>Notas</span>
-            <p className="text-sm mt-2 whitespace-pre-wrap" style={{ color: "var(--tg-theme-text_color)" }}>{cliente.notas}</p>
+        {/* ── Dirección ── */}
+        <Section icon={MapPin} label="Dirección">
+          <div className="flex gap-2">
+            <div className="flex-[3]">
+              <Field label="Calle" value={cliente.direccion_calle || ""}
+                onChange={(v) => handleUpdate("direccion_calle", v || null)} placeholder="Calle" />
+            </div>
+            <div className="flex-1">
+              <Field label="Nº" value={cliente.direccion_numero || ""}
+                onChange={(v) => handleUpdate("direccion_numero", v || null)} placeholder="Nº" />
+            </div>
           </div>
-        )}
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <Field label="Municipio" value={cliente.direccion_municipio || ""}
+                onChange={(v) => handleUpdate("direccion_municipio", v || null)} placeholder="Municipio" />
+            </div>
+            <div className="flex-1">
+              <Field label="Provincia" value={cliente.direccion_provincia || ""}
+                onChange={(v) => handleUpdate("direccion_provincia", v || null)} placeholder="Provincia" />
+            </div>
+          </div>
+        </Section>
 
-        {/* Trabajos vinculados */}
+        {/* ── Notas ── */}
+        <Section icon={MessageSquare} label="Notas">
+          <Field label="Notas internas" value={cliente.notas || ""} multiline
+            onChange={(v) => handleUpdate("notas", v || null)} placeholder="Notas sobre el cliente…" />
+        </Section>
+
+        {/* ── Trabajos vinculados ── */}
         <div>
           <h2 className="text-sm font-semibold mb-2" style={{ color: "var(--tg-theme-text_color)" }}>
             Trabajos ({trabajos.length})

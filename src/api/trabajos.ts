@@ -294,6 +294,11 @@ export async function createCliente(data: {
   return normalizeDoc<Cliente>(doc as AppwriteDoc);
 }
 
+export async function updateCliente(id: string, data: Partial<Cliente>): Promise<Cliente> {
+  const doc = await db.updateDocument(DB, "clientes", id, data as Record<string, unknown>);
+  return normalizeDoc<Cliente>(doc as AppwriteDoc);
+}
+
 /** Busca trabajos vinculados a un cliente */
 export async function getTrabajosDeCliente(clienteId: string): Promise<Trabajo[]> {
   const res = await db.listDocuments(DB, "trabajos", [
