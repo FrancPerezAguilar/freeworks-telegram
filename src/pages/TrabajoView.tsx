@@ -12,7 +12,7 @@ import {
   updateChecklistItem, addChecklistItem, deleteChecklistItem,
   getComentarios, addComentario, deleteComentario,
   getAdjuntos, uploadAdjunto, deleteAdjunto,
-  getClientes, getMateriales, createMaterial,
+  getClientes, getMateriales, createMaterial, createCliente,
 } from "../api/trabajos";
 import type { Trabajo, ChecklistItem, Cliente, MaterialCatalogo } from "../api/trabajos";
 import { useTelegramBackButton } from "../lib/TelegramContext";
@@ -243,7 +243,7 @@ function AddressAutocomplete({ calle, numero, municipio, provincia, onChange }: 
 }
 
 
-// ── Cliente Selector (autocomplete) ───────────────────────────
+// ── Cliente Selector (autocomplete + crear on-the-fly) ──────────
 
 function ClienteSelector({ clienteId, clienteNombre, onChange }: {
   clienteId: string; clienteNombre: string;
@@ -252,15 +252,17 @@ function ClienteSelector({ clienteId, clienteNombre, onChange }: {
   const [editing, setEditing] = useState(false);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Cliente[]>([]);
+  const [showResults, setShowResults] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const search = (q: string) => {
     if (timerRef.current) clearTimeout(timerRef.current);
-    if (q.length < 1) { setResults([]); return; }
+    if (q.length < 1) { setResults([]); setShowResults(false); return; }
     timerRef.current = setTimeout(async () => {
       try {
         const r = await getClientes(q);
         setResults(r);
+        setShowResults(true);
       } catch { setResults([]); }
     }, 150);
   };
@@ -269,13 +271,25 @@ function ClienteSelector({ clienteId, clienteNombre, onChange }: {
     onChange(c.appwrite_id, c.nombre + (c.apellidos ? " " + c.apellidos : ""));
     setQuery("");
     setResults([]);
+    setShowResults(false);
     setEditing(false);
+  };
+
+  const crearNuevo = () => {
+    if (!query.trim()) return;
+    createCliente({ nombre: query.trim() }).then((c) => select(c));
   };
 
   const clear = () => {
     onChange("", "");
     setEditing(false);
   };
+
+  const existsInResults = results.some(
+    (c) => c.nombre.toLowerCase() === query.toLowerCase() ||
+           (c.nombre + " " + (c.apellidos ?? "")).trim().toLowerCase() === query.toLowerCase()
+  );
+  const canCreate = query.trim().length >= 2 && !existsInResults;
 
   if (!editing) {
     return (
@@ -300,12 +314,12 @@ function ClienteSelector({ clienteId, clienteNombre, onChange }: {
     <div className="flex flex-col gap-0.5 relative">
       <span className="text-xs font-medium" style={{ color: "var(--tg-theme-accent_text_color)" }}>Cliente</span>
       <input type="text" value={query} onChange={(e) => { setQuery(e.target.value); search(e.target.value); }}
-        onBlur={() => setTimeout(() => { setEditing(false); setResults([]); }, 200)}
-        onKeyDown={(e) => { if (e.key === "Escape") { setEditing(false); setResults([]); } }}
-        placeholder="Buscar cliente…"
+        onBlur={() => setTimeout(() => { setShowResults(false); setEditing(false); }, 250)}
+        onKeyDown={(e) => { if (e.key === "Escape") { setEditing(false); setShowResults(false); } }}
+        placeholder="Buscar o crear cliente…"
         className="w-full bg-transparent text-sm py-1 px-2 rounded-md outline-none"
         style={inputStyle} autoFocus />
-      {results.length > 0 && (
+      {showResults && (results.length > 0 || canCreate) && (
         <div className="absolute top-full left-0 right-0 z-30 rounded-lg shadow-lg max-h-48 overflow-y-auto mt-1"
           style={{ background: "var(--tg-theme-bg_color)", border: "1px solid rgba(128,128,128,0.15)" }}>
           {results.map((c) => (
@@ -316,6 +330,13 @@ function ClienteSelector({ clienteId, clienteNombre, onChange }: {
               {c.direccion_municipio && <span className="text-xs ml-2 opacity-50">{c.direccion_municipio}</span>}
             </button>
           ))}
+          {canCreate && (
+            <button onMouseDown={crearNuevo}
+              className="w-full text-left text-sm py-2 px-3 hover:opacity-80 active:opacity-60 flex items-center gap-2"
+              style={{ color: "var(--tg-theme-accent_text_color)" }}>
+              <Plus className="h-3.5 w-3.5" /> Crear "{query.trim()}"
+            </button>
+          )}
         </div>
       )}
     </div>

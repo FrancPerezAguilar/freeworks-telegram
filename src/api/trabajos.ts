@@ -282,6 +282,18 @@ export async function getCliente(id: string): Promise<Cliente> {
   return normalizeDoc<Cliente>(doc as AppwriteDoc);
 }
 
+export async function createCliente(data: {
+  nombre: string; apellidos?: string;
+  telefono_principal?: string; email?: string;
+  direccion_calle?: string; direccion_numero?: string;
+  direccion_municipio?: string; direccion_provincia?: string;
+}): Promise<Cliente> {
+  const doc = await db.createDocument(DB, "clientes", "unique()", {
+    ...data, activo: true,
+  } as Record<string, unknown>, await getUserPerms());
+  return normalizeDoc<Cliente>(doc as AppwriteDoc);
+}
+
 /** Busca trabajos vinculados a un cliente */
 export async function getTrabajosDeCliente(clienteId: string): Promise<Trabajo[]> {
   const res = await db.listDocuments(DB, "trabajos", [
