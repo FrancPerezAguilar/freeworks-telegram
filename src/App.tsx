@@ -9,6 +9,7 @@ import TrabajosListView from "./pages/TrabajosListView";
 import MisTareasView from "./pages/MisTareasView";
 import ClientesListView from "./pages/ClientesListView";
 import ClienteDetailView from "./pages/ClienteDetailView";
+import ClienteFormView from "./pages/ClienteFormView";
 import { LayoutDashboard, Calendar, Wrench, CheckSquare } from "lucide-react";
 
 const queryClient = new QueryClient({
@@ -47,7 +48,7 @@ function AuthError({ message, onRetry }: { message: string; onRetry: () => void 
 
 // ── Tab bar ───────────────────────────────────────────────────
 
-type View = "dashboard" | "agenda" | "trabajos" | "mistareas" | "trabajo" | "clientes" | "cliente";
+type View = "dashboard" | "agenda" | "trabajos" | "mistareas" | "trabajo" | "clientes" | "cliente" | "nuevoCliente";
 
 function TabBar({ active, onSelect }: { active: View; onSelect: (v: View) => void }) {
   const tabs: { id: View; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
@@ -139,6 +140,8 @@ export default function App() {
   const handleClientesClick = useCallback(() => { setView("clientes"); }, []);
   const handleClienteClick = useCallback((id: string) => { setSelectedClienteId(id); setView("cliente"); }, []);
   const handleBackFromCliente = useCallback(() => { setView("clientes"); }, []);
+  const handleNuevoCliente = useCallback(() => { setView("nuevoCliente"); }, []);
+  const handleBackFromNuevoCliente = useCallback(() => { setView("clientes"); }, []);
 
   // No Telegram → mostrar sin auth
   if (!isTelegram) {
@@ -168,7 +171,9 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       {view === "clientes" ? (
-        <ClientesListView onBack={handleBack} onClienteClick={handleClienteClick} />
+        <ClientesListView onBack={handleBack} onClienteClick={handleClienteClick} onNuevoCliente={handleNuevoCliente} />
+      ) : view === "nuevoCliente" ? (
+        <ClienteFormView onBack={handleBackFromNuevoCliente} />
       ) : view === "cliente" && selectedClienteId ? (
         <ClienteDetailView clienteId={selectedClienteId} onBack={handleBackFromCliente} onTrabajoClick={handleTrabajoClick} />
       ) : view === "trabajo" && selectedTrabajoId ? (

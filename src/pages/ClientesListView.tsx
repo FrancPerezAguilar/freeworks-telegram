@@ -1,18 +1,19 @@
 /**
- * ClientesListView — lista de clientes con búsqueda.
+ * ClientesListView — lista de clientes con búsqueda y crear nuevo.
  */
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getClientes } from "../api/trabajos";
-import { Search, ChevronRight, Users, MapPin, Phone } from "lucide-react";
+import { Search, ChevronRight, Users, MapPin, Phone, Plus } from "lucide-react";
 
 interface Props {
   onBack: () => void;
   onClienteClick: (id: string) => void;
+  onNuevoCliente: () => void;
 }
 
-export default function ClientesListView({ onBack, onClienteClick }: Props) {
+export default function ClientesListView({ onBack, onClienteClick, onNuevoCliente }: Props) {
   const [search, setSearch] = useState("");
   const [q, setQ] = useState("");
 
@@ -29,6 +30,11 @@ export default function ClientesListView({ onBack, onClienteClick }: Props) {
           <span className="text-sm" style={{ color: "var(--tg-theme-link_color)" }}>← Volver</span>
         </button>
         <h1 className="text-lg font-bold flex-1" style={{ color: "var(--tg-theme-text_color)" }}>Clientes</h1>
+        <button onClick={onNuevoCliente}
+          className="w-9 h-9 rounded-full flex items-center justify-center active:opacity-70"
+          style={{ background: "var(--tg-theme-button_color)", color: "var(--tg-theme-button_text_color)" }}>
+          <Plus className="h-5 w-5" />
+        </button>
       </div>
 
       {/* Search */}
