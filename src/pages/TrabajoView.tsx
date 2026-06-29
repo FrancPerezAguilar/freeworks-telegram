@@ -746,7 +746,7 @@ function ChecklistSection({ trabajoId }: { trabajoId: string }) {
 
   const saveEdit = async (item: ChecklistItem) => {
     if (!editText.trim()) return;
-    await updateChecklistItem(item.appwrite_id, { descripcion: editText.trim() });
+    await updateChecklistItem(item.appwrite_id, { descripcion: editText.trim(), fecha: editFecha || null });
     setEditingId(null);
     queryClient.invalidateQueries({ queryKey: ["trabajo", trabajoId] });
   };
@@ -977,7 +977,7 @@ export default function TrabajoView({ trabajoId, onBack }: Props) {
         {tab === "checklist" && (
           <>
             <input type="text" value={tarDesc} onChange={(e) => setTarDesc(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter" && tarDesc.trim()) { addChecklistItem(trabajoId!, tarDesc.trim()); setTarDesc(""); setTarFecha(""); setTarShowDate(false); queryClient.invalidateQueries({ queryKey: ["trabajo", trabajoId] }); } }}
+              onKeyDown={(e) => { if (e.key === "Enter" && tarDesc.trim()) { addChecklistItem(trabajoId!, tarDesc.trim(), tarFecha || undefined); setTarDesc(""); setTarFecha(""); setTarShowDate(false); queryClient.invalidateQueries({ queryKey: ["trabajo", trabajoId] }); } }}
               placeholder="Nueva tarea…"
               className="flex-1 bg-transparent text-sm py-2 px-3 rounded-lg outline-none"
               style={inputStyle} />
@@ -990,7 +990,7 @@ export default function TrabajoView({ trabajoId, onBack }: Props) {
               style={{ color: tarShowDate ? "var(--tg-theme-button_color)" : "var(--tg-theme-hint_color)", background: "var(--tg-theme-bg_color)" }}>
               <CalendarIcon className="h-4 w-4" />
             </button>
-            <button onClick={async () => { if (!tarDesc.trim()) return; await addChecklistItem(trabajoId!, tarDesc.trim()); setTarDesc(""); setTarFecha(""); setTarShowDate(false); queryClient.invalidateQueries({ queryKey: ["trabajo", trabajoId] }); }}
+            <button onClick={async () => { if (!tarDesc.trim()) return; await addChecklistItem(trabajoId!, tarDesc.trim(), tarFecha || undefined); setTarDesc(""); setTarFecha(""); setTarShowDate(false); queryClient.invalidateQueries({ queryKey: ["trabajo", trabajoId] }); }}
               disabled={!tarDesc.trim()} className="p-2 rounded-lg flex-shrink-0"
               style={{ background: "var(--tg-theme-button_color)", color: "var(--tg-theme-button_text_color)", opacity: tarDesc.trim() ? 1 : 0.4 }}><Plus className="h-4 w-4" /></button>
           </>

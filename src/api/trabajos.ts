@@ -102,13 +102,14 @@ export async function updateTrabajo(id: string, data: Partial<Trabajo>): Promise
   await db.updateDocument(DB, "trabajos", id, payload as Record<string, unknown>);
 }
 
-export async function updateChecklistItem(appwriteId: string, data: { completado?: boolean; descripcion?: string }): Promise<void> {
+export async function updateChecklistItem(appwriteId: string, data: { completado?: boolean; descripcion?: string; fecha?: string | null }): Promise<void> {
   await db.updateDocument(DB, "trabajo_checklist", appwriteId, data as Record<string, unknown>);
 }
 
-export async function addChecklistItem(trabajoId: string, descripcion: string): Promise<void> {
+export async function addChecklistItem(trabajoId: string, descripcion: string, fecha?: string): Promise<void> {
   await db.createDocument(DB, "trabajo_checklist", "unique()", {
     trabajo_id: trabajoId, descripcion, completado: false,
+    ...(fecha ? { fecha } : {}),
   } as Record<string, unknown>, await getUserPerms());
 }
 
