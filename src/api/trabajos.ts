@@ -58,7 +58,8 @@ export interface Cliente {
 }
 
 export interface CalendarioEvento {
-  id: number; titulo: string; descripcion?: string;
+  id: number; appwrite_id: string;
+  titulo: string; descripcion?: string;
   fecha_evento: string; hora_evento?: string;
   duracion_min?: number; tipo?: string;
   cliente_nombre?: string; ubicacion?: string;
@@ -380,6 +381,38 @@ export async function getEventos(fechaDesde?: string, fechaHasta?: string): Prom
 
   const res = await db.listDocuments(DB, "calendario", queries);
   return res.documents.map((d) => normalizeDoc<CalendarioEvento>(d as AppwriteDoc));
+}
+
+export interface EventoCreate {
+  titulo: string;
+  descripcion?: string;
+  fecha_evento: string;        // YYYY-MM-DD
+  hora_evento?: string;        // HH:MM
+  duracion_min?: number;
+  tipo?: string;
+  cliente_nombre?: string;
+  ubicacion?: string;
+  color?: string;
+  estado?: string;             // "confirmado" | "pendiente" | "cancelado"
+}
+
+export async function addEvento(data: EventoCreate): Promise<{ id: number }> {
+  const created = await db.createDocument(DB, "calendario", "unique()", {
+    ...data,
+    estado: data.estado ?? "confirmado",
+  } as Record<string, unknown>, await getUserPerms());
+  return { id: created.id };
+}
+
+export async function updateEvento(
+  appwriteId: string,
+  data: Partial<EventoCreate>,
+): Promise<void> {
+  await db.updateDocument(DB, "calendario", appwriteId, data as Record<string, unknown>);
+}
+
+export async function deleteEvento(appwriteId: string): Promise<void> {
+  await db.deleteDocument(DB, "calendario", appwriteId);
 }
 
 // ── Checklist pendiente ───────────────────────────────────────
