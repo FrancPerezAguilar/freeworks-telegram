@@ -6,11 +6,12 @@
  * - Borrar evento (long press / click → confirmación)
  */
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getEventos, getChecklistConFecha,
   addEvento, deleteEvento,
+  getTrabajos,
   type EventoCreate,
 } from "../api/trabajos";
 import type { CalendarioEvento, ChecklistItem, Trabajo } from "../api/trabajos";
@@ -18,7 +19,7 @@ import {
   fmtDate, fmtTime, lunesEstaSemana, domingoEstaSemana, hoyISO, TIPOS_EVENTO,
 } from "../lib/constants";
 import {
-  MapPin, Clock, CheckSquare, Plus, X, Calendar, Trash2,
+  MapPin, Clock, CheckSquare, Plus, X, Calendar, Trash2, Search,
 } from "lucide-react";
 
 // ── Tipos unificados ──────────────────────────────────────────
@@ -154,9 +155,27 @@ function NuevoEventoModal({
   const [hora, setHora] = useState("");
   const [duracion, setDuracion] = useState("");
   const [tipo, setTipo] = useState("cita");
-  const [clienteNombre, setClienteNombre] = useState("");
+  const [trabajoSel, setTrabajoSel] = useState<Trabajo | null>(null);
+  const [trabajoQuery, setTrabajoQuery] = useState("");
   const [ubicacion, setUbicacion] = useState("");
   const [error, setError] = useState("");
+
+  const { data: trabajos = [] } = useQuery({
+    queryKey: ["trabajos", "modal"],
+    queryFn: () => getTrabajos({ limite: 100 }),
+    enabled: open,
+  });
+
+  const trabajosFiltrados = useMemo(() => {
+    const q = trabajoQuery.toLowerCase().trim();
+    if (!q) return trabajos;
+    return trabajos.filter(
+      (t) =>
+        t.titulo.toLowerCase().includes(q) ||
+        (t.cliente_nombre ?? "").toLowerCase().includes(q) ||
+        (t.obra_municipio ?? "").toLowerCase().includes(q),
+    );
+  }, [trabajos, trabajoQuery]);
 
   const createMutation = useMutation({
     mutationFn: () => {
@@ -168,8 +187,16 @@ function NuevoEventoModal({
       if (desc.trim()) data.descripcion = desc.trim();
       if (hora) data.hora_evento = hora;
       if (duracion) data.duracion_min = parseInt(duracion, 10) || undefined;
-      if (clienteNombre.trim()) data.cliente_nombre = clienteNombre.trim();
-      if (ubicacion.trim()) data.ubicacion = ubicacion.trim();
+      // Al vincular un trabajo, autocompletamos cliente_nombre y ubicacion
+      if (trabajoSel) {
+        if (trabajoSel.cliente_nombre) data.cliente_nombre = trabajoSel.cliente_nombre;
+        if (trabajoSel.obra_municipio && !ubicacion.trim()) {
+          data.ubicacion = [trabajoSel.obra_calle, trabajoSel.obra_numero].filter(Boolean).join(" ")
+            + (trabajoSel.obra_municipio ? `, ${trabajoSel.obra_municipio}` : "");
+        }
+      } else if (ubicacion.trim()) {
+        data.ubicacion = ubicacion.trim();
+      }
       // color automático según tipo
       data.color = TIPO_COLORS[tipo] ?? TIPO_COLORS.otro;
       return addEvento(data);
@@ -188,7 +215,8 @@ function NuevoEventoModal({
     setHora("");
     setDuracion("");
     setTipo("cita");
-    setClienteNombre("");
+    setTrabajoSel(null);
+    setTrabajoQuery("");
     setUbicacion("");
     setError("");
     onClose();
@@ -309,7 +337,7 @@ function NuevoEventoModal({
             </div>
           </div>
 
-          {/* Duración + Cliente */}
+          {/* Duración + Trabajo selector */}
           <div className="flex gap-2">
             <div className="flex-1 min-w-0">
               <label className="text-xs font-medium mb-1 block" style={{ color: "var(--tg-theme-hint_color)" }}>
@@ -326,28 +354,100 @@ function NuevoEventoModal({
             </div>
             <div className="flex-[2] min-w-0">
               <label className="text-xs font-medium mb-1 block" style={{ color: "var(--tg-theme-hint_color)" }}>
-                Cliente
+                Trabajo
               </label>
-              <input
-                type="text" value={clienteNombre}
-                onChange={(e) => setClienteNombre(e.target.value)}
-                placeholder="Opcional"
-                className="w-full text-sm py-2 px-3 rounded-lg outline-none"
-                style={inputStyle}
-              />
+              {trabajoSel ? (
+                <div className="flex items-center gap-2 p-2 rounded-lg min-w-0"
+                  style={{ background: "var(--tg-theme-secondary_bg_color)" }}>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate"
+                      style={{ color: "var(--tg-theme-text_color)" }}>
+                      {trabajoSel.titulo}
+                    </p>
+                    {trabajoSel.cliente_nombre && (
+                      <p className="text-xs truncate"
+                        style={{ color: "var(--tg-theme-hint_color)" }}>
+                        {trabajoSel.cliente_nombre}
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setTrabajoSel(null)}
+                    className="p-1 rounded active:opacity-70 flex-shrink-0"
+                    style={{ color: "var(--tg-theme-hint_color)" }}
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg mb-1 min-w-0"
+                    style={{ background: "var(--tg-theme-secondary_bg_color)" }}>
+                    <Search className="h-4 w-4 flex-shrink-0"
+                      style={{ color: "var(--tg-theme-hint_color)" }} />
+                    <input
+                      type="text" value={trabajoQuery}
+                      onChange={(e) => setTrabajoQuery(e.target.value)}
+                      placeholder="Buscar trabajo…"
+                      className="flex-1 min-w-0 bg-transparent text-sm outline-none"
+                      style={{ color: "var(--tg-theme-text_color)" }}
+                    />
+                    {trabajoQuery && (
+                      <button type="button"
+                        onClick={() => setTrabajoQuery("")}
+                        className="p-0.5 rounded active:opacity-70 flex-shrink-0"
+                        style={{ color: "var(--tg-theme-hint_color)" }}>
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-1 max-h-32 overflow-y-auto">
+                    {trabajosFiltrados.length === 0 ? (
+                      <p className="text-center text-xs py-2"
+                        style={{ color: "var(--tg-theme-hint_color)" }}>
+                        Sin resultados
+                      </p>
+                    ) : (
+                      trabajosFiltrados.slice(0, 5).map((t) => (
+                        <button
+                          key={t.id} type="button"
+                          onClick={() => { setTrabajoSel(t); setTrabajoQuery(""); }}
+                          className="flex items-center gap-2 p-2 rounded-lg text-left active:opacity-70 min-w-0"
+                          style={{ background: "var(--tg-theme-secondary_bg_color)" }}
+                        >
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate"
+                              style={{ color: "var(--tg-theme-text_color)" }}>
+                              {t.titulo}
+                            </p>
+                            {t.cliente_nombre && (
+                              <p className="text-xs truncate"
+                                style={{ color: "var(--tg-theme-hint_color)" }}>
+                                {t.cliente_nombre}
+                              </p>
+                            )}
+                          </div>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
-          {/* Ubicación */}
+          {/* Ubicación — solo se usa si no hay trabajo vinculado */}
           <div>
             <label className="text-xs font-medium mb-1 block" style={{ color: "var(--tg-theme-hint_color)" }}>
-              Ubicación
+              Ubicación {trabajoSel ? <span style={{ opacity: 0.5 }}>(del trabajo)</span> : ""}
             </label>
             <input
               type="text" value={ubicacion}
               onChange={(e) => setUbicacion(e.target.value)}
-              placeholder="Ej: Calle Mayor 11, Barcelona"
-              className="w-full text-sm py-2 px-3 rounded-lg outline-none"
+              placeholder={trabajoSel ? "Se usa la del trabajo seleccionado" : "Ej: Calle Mayor 11, Barcelona"}
+              disabled={!!trabajoSel}
+              className="w-full text-sm py-2 px-3 rounded-lg outline-none disabled:opacity-60"
               style={inputStyle}
             />
           </div>
