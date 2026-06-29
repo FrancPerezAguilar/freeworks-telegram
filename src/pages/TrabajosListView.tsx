@@ -6,23 +6,22 @@ import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getTrabajos } from "../api/trabajos";
 import type { Trabajo } from "../api/trabajos";
-import { ESTADOS, PRIORIDADES, fmtDate } from "../lib/constants";
+import { EstadoBadge, PRIORIDADES, PRIORIDAD_COLORS, fmtDate } from "../lib/constants";
 import {
   Search, List, Columns, Wrench, MapPin, ChevronRight,
 } from "lucide-react";
 
 type ViewMode = "list" | "kanban";
 
-const COLUMNAS: { estado: string; titulo: string; color: string }[] = [
-  { estado: "pendiente",  titulo: "Pendiente",  color: "#f59e0b" },
-  { estado: "en_curso",   titulo: "En curso",   color: "#3b82f6" },
-  { estado: "completado", titulo: "Completado",  color: "#10b981" },
+const COLUMNAS: { estado: string; titulo: string; color: string; bgTint: string }[] = [
+  { estado: "pendiente",  titulo: "Pendiente",  color: "var(--tg-state-pendiente-fg)",  bgTint: "var(--tg-state-pendiente-bg-tint)" },
+  { estado: "en_curso",   titulo: "En curso",   color: "var(--tg-state-en_curso-fg)",   bgTint: "var(--tg-state-en_curso-bg-tint)" },
+  { estado: "completado", titulo: "Completado", color: "var(--tg-state-completado-fg)", bgTint: "var(--tg-state-completado-bg-tint)" },
 ];
 
 // ── TrabajoCard (compacta) ────────────────────────────────────
 
 function TrabajoCard({ trabajo, onClick }: { trabajo: Trabajo; onClick: () => void }) {
-  const estado = ESTADOS[trabajo.estado] ?? ESTADOS.pendiente;
   return (
     <div
       onClick={onClick}
@@ -34,9 +33,7 @@ function TrabajoCard({ trabajo, onClick }: { trabajo: Trabajo; onClick: () => vo
           {trabajo.titulo}
         </p>
         <div className="flex items-center gap-2 mt-1 flex-wrap">
-          <span className={`text-xs px-1.5 py-0.5 rounded-full ${estado.color}`}>
-            {estado.label}
-          </span>
+          <EstadoBadge estado={trabajo.estado} />
           {trabajo.cliente_nombre && (
             <span className="text-xs truncate" style={{ color: "var(--tg-theme-hint_color)" }}>
               {trabajo.cliente_nombre}
@@ -61,7 +58,6 @@ function TrabajoCard({ trabajo, onClick }: { trabajo: Trabajo; onClick: () => vo
 // ── KanbanCard ────────────────────────────────────────────────
 
 function KanbanCard({ trabajo, onClick }: { trabajo: Trabajo; onClick: () => void }) {
-  const prioridad = PRIORIDADES[trabajo.prioridad] ?? PRIORIDADES.media;
   return (
     <div
       onClick={onClick}
@@ -72,7 +68,9 @@ function KanbanCard({ trabajo, onClick }: { trabajo: Trabajo; onClick: () => voi
         {trabajo.titulo}
       </p>
       <div className="flex items-center gap-2 mt-1">
-        <span className={`text-xs ${prioridad.color}`}>{prioridad.label}</span>
+        <span className="text-xs" style={{ color: PRIORIDAD_COLORS[trabajo.prioridad] ?? PRIORIDAD_COLORS.media }}>
+          {PRIORIDADES[trabajo.prioridad]?.label ?? trabajo.prioridad}
+        </span>
         {trabajo.cliente_nombre && (
           <span className="text-xs truncate" style={{ color: "var(--tg-theme-hint_color)" }}>
             {trabajo.cliente_nombre}
@@ -226,7 +224,7 @@ export default function TrabajosListView({ onTrabajoClick }: Props) {
                   <span className="text-sm font-bold" style={{ color: "var(--tg-theme-text_color)" }}>
                     {col.titulo}
                   </span>
-                  <span className="text-xs px-2 py-0.5 rounded-full ml-auto" style={{ background: col.color + "20", color: col.color }}>
+                  <span className="text-xs px-2 py-0.5 rounded-full ml-auto" style={{ background: col.bgTint, color: col.color }}>
                     {kanbanGrupos[col.estado]?.length ?? 0}
                   </span>
                 </div>

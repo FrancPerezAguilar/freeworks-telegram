@@ -75,6 +75,18 @@ function applyThemeVars(tp: ThemeParams | undefined): void {
   }
 }
 
+/** Aplica la clase `dark` en <html> cuando Telegram indica colorScheme=dark.
+ *  Esto activa las CSS vars semánticas (--tg-state-*, --tg-prio-*) que tenemos
+ *  definidas con overrides para modo oscuro en index.css. */
+function applyColorSchemeClass(scheme: "light" | "dark" | null | undefined): void {
+  if (typeof document === "undefined") return;
+  if (scheme === "dark") {
+    document.documentElement.classList.add("dark");
+  } else {
+    document.documentElement.classList.remove("dark");
+  }
+}
+
 // ── Context ───────────────────────────────────────────────────
 
 export interface TelegramContextValue {
@@ -129,11 +141,13 @@ export function TelegramProvider({ children }: { children: ReactNode }) {
     } catch { /* noop */ }
 
     applyThemeVars(tg.themeParams);
+    applyColorSchemeClass(tg.colorScheme);
 
     const onThemeChange = () => {
       setColorScheme(tg.colorScheme ?? null);
       setTheme(tg.themeParams ?? {});
       applyThemeVars(tg.themeParams);
+      applyColorSchemeClass(tg.colorScheme);
     };
     try { tg.onEvent("themeChanged", onThemeChange); } catch { /* noop */ }
 

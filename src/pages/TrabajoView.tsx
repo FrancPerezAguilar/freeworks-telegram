@@ -777,7 +777,7 @@ function ChecklistSection({ trabajoId }: { trabajoId: string }) {
                 /* ── Edit mode ── */
                 <div className="flex items-center gap-2 p-2 rounded-lg" style={{ background: "var(--tg-theme-secondary_bg_color)" }}>
                   <button onClick={() => setEditingId(null)} className="flex-shrink-0"
-                    style={{ color: item.completado ? "#10b981" : "var(--tg-theme-hint_color)" }}>
+                    style={{ color: item.completado ? "var(--tg-success)" : "var(--tg-theme-hint_color)" }}>
                     <CheckSquare className="h-4 w-4" />
                   </button>
                   <div className="flex-1 flex flex-col gap-1">
@@ -800,7 +800,7 @@ function ChecklistSection({ trabajoId }: { trabajoId: string }) {
                 <div className="flex items-center gap-2 p-2 rounded-lg group"
                   style={{ background: "var(--tg-theme-secondary_bg_color)" }}>
                   <button onClick={() => toggleItem(item)} className="flex-shrink-0"
-                    style={{ color: item.completado ? "#10b981" : "var(--tg-theme-hint_color)" }}>
+                    style={{ color: item.completado ? "var(--tg-success)" : "var(--tg-theme-hint_color)" }}>
                     <CheckSquare className="h-4 w-4" />
                   </button>
                   <div className="flex-1 min-w-0">

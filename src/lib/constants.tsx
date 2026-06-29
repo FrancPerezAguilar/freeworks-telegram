@@ -1,17 +1,59 @@
 /** Constantes compartidas entre vistas */
 
+/**
+ * Colores de estado — definidos como CSS vars semánticas para que se adapten
+ * automáticamente al modo claro/oscuro. Aplicar así:
+ *
+ *   <EstadoBadge estado="pendiente" />
+ *
+ * Los valores se cambian en src/index.css bajo `:root.dark` y
+ * `@media (prefers-color-scheme: dark)`.
+ */
+export const ESTADO_COLORS: Record<string, { bg: string; fg: string }> = {
+  pendiente:  { bg: "var(--tg-state-pendiente-bg)",  fg: "var(--tg-state-pendiente-fg)" },
+  en_curso:   { bg: "var(--tg-state-en_curso-bg)",   fg: "var(--tg-state-en_curso-fg)" },
+  completado: { bg: "var(--tg-state-completado-bg)", fg: "var(--tg-state-completado-fg)" },
+  cancelado:  { bg: "var(--tg-state-cancelado-bg)",  fg: "var(--tg-state-cancelado-fg)" },
+};
+
 export const ESTADOS: Record<string, { label: string; color: string }> = {
-  pendiente:  { label: "Pendiente",  color: "bg-amber-100 text-amber-800" },
-  en_curso:   { label: "En curso",   color: "bg-blue-100 text-blue-800" },
-  completado: { label: "Completado", color: "bg-green-100 text-green-800" },
-  cancelado:  { label: "Cancelado",  color: "bg-red-100 text-red-800" },
+  pendiente:  { label: "Pendiente",  color: "" },
+  en_curso:   { label: "En curso",   color: "" },
+  completado: { label: "Completado", color: "" },
+  cancelado:  { label: "Cancelado",  color: "" },
+};
+
+/**
+ * <EstadoBadge> — chip de estado que se adapta al tema oscuro automáticamente.
+ * Reemplaza al antiguo patrón `${ESTADOS[x].color}` que usaba clases Tailwind
+ * hardcodeadas y no se veían bien en dark mode.
+ */
+export function EstadoBadge({ estado }: { estado: string }) {
+  const e = ESTADOS[estado] ?? ESTADOS.pendiente;
+  const colors = ESTADO_COLORS[estado] ?? ESTADO_COLORS.pendiente;
+  return (
+    <span
+      className="text-xs px-1.5 py-0.5 rounded-full"
+      style={{ background: colors.bg, color: colors.fg }}
+    >
+      {e.label}
+    </span>
+  );
+}
+
+/** Colores de prioridad (solo color de texto — sin fondo) */
+export const PRIORIDAD_COLORS: Record<string, string> = {
+  baja:    "var(--tg-prio-baja-fg)",
+  media:   "var(--tg-prio-media-fg)",
+  alta:    "var(--tg-prio-alta-fg)",
+  urgente: "var(--tg-prio-urgente-fg)",
 };
 
 export const PRIORIDADES: Record<string, { label: string; color: string }> = {
-  baja:   { label: "Baja",   color: "text-gray-400" },
-  media:  { label: "Media",  color: "text-yellow-500" },
-  alta:   { label: "Alta",   color: "text-orange-500" },
-  urgente:{ label: "Urgente",color: "text-red-500" },
+  baja:    { label: "Baja",    color: "var(--tg-prio-baja-fg)" },
+  media:   { label: "Media",   color: "var(--tg-prio-media-fg)" },
+  alta:    { label: "Alta",    color: "var(--tg-prio-alta-fg)" },
+  urgente: { label: "Urgente", color: "var(--tg-prio-urgente-fg)" },
 };
 
 export const TIPOS_EVENTO: Record<string, { label: string; icon: string }> = {

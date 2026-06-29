@@ -15,6 +15,77 @@
   --tg-theme-subtitle_text_color: #999999;
   --tg-theme-destructive_text_color: #ff3b30;
   --tg-theme-accent_text_color: #2481cc;
+
+  /* Semantic colors — adapt automatically to light/dark mode */
+  /* Defaults = light mode; overridden in :root.dark below */
+  --tg-state-pendiente-bg: #fef3c7;     /* amber-100 */
+  --tg-state-pendiente-fg: #92400e;     /* amber-800 */
+  --tg-state-pendiente-bg-tint: rgba(254, 243, 199, 0.5);
+  --tg-state-en_curso-bg: #dbeafe;      /* blue-100 */
+  --tg-state-en_curso-fg: #1e40af;      /* blue-800 */
+  --tg-state-en_curso-bg-tint: rgba(219, 234, 254, 0.5);
+  --tg-state-completado-bg: #dcfce7;    /* green-100 */
+  --tg-state-completado-fg: #166534;    /* green-800 */
+  --tg-state-completado-bg-tint: rgba(220, 252, 231, 0.5);
+  --tg-state-cancelado-bg: #fee2e2;     /* red-100 */
+  --tg-state-cancelado-fg: #991b1b;     /* red-800 */
+  --tg-state-cancelado-bg-tint: rgba(254, 226, 226, 0.5);
+
+  --tg-prio-baja-fg: #9ca3af;           /* gray-400 */
+  --tg-prio-media-fg: #eab308;          /* yellow-500 */
+  --tg-prio-alta-fg: #f97316;           /* orange-500 */
+  --tg-prio-urgente-fg: #ef4444;        /* red-500 */
+
+  --tg-success: #10b981;                /* green-500 */
+  --tg-success-fg: #ffffff;
+  --tg-success-bg: rgba(16, 185, 129, 0.15);
+}
+
+/* Dark mode overrides — activated by adding class="dark" on <html> */
+:root.dark {
+  --tg-state-pendiente-bg: rgba(251, 191, 36, 0.18);
+  --tg-state-pendiente-fg: #fcd34d;     /* amber-300 */
+  --tg-state-pendiente-bg-tint: rgba(251, 191, 36, 0.10);
+  --tg-state-en_curso-bg: rgba(59, 130, 246, 0.18);
+  --tg-state-en_curso-fg: #93c5fd;      /* blue-300 */
+  --tg-state-en_curso-bg-tint: rgba(59, 130, 246, 0.10);
+  --tg-state-completado-bg: rgba(16, 185, 129, 0.18);
+  --tg-state-completado-fg: #6ee7b7;    /* green-300 */
+  --tg-state-completado-bg-tint: rgba(16, 185, 129, 0.10);
+  --tg-state-cancelado-bg: rgba(239, 68, 68, 0.18);
+  --tg-state-cancelado-fg: #fca5a5;     /* red-300 */
+  --tg-state-cancelado-bg-tint: rgba(239, 68, 68, 0.10);
+
+  --tg-prio-baja-fg: #6b7280;           /* gray-500 */
+  --tg-prio-media-fg: #facc15;          /* yellow-400 */
+  --tg-prio-alta-fg: #fb923c;           /* orange-400 */
+  --tg-prio-urgente-fg: #f87171;        /* red-400 */
+
+  --tg-success: #34d399;                /* green-400 (más claro para dark) */
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    --tg-state-pendiente-bg: rgba(251, 191, 36, 0.18);
+    --tg-state-pendiente-fg: #fcd34d;
+    --tg-state-pendiente-bg-tint: rgba(251, 191, 36, 0.10);
+    --tg-state-en_curso-bg: rgba(59, 130, 246, 0.18);
+    --tg-state-en_curso-fg: #93c5fd;
+    --tg-state-en_curso-bg-tint: rgba(59, 130, 246, 0.10);
+    --tg-state-completado-bg: rgba(16, 185, 129, 0.18);
+    --tg-state-completado-fg: #6ee7b7;
+    --tg-state-completado-bg-tint: rgba(16, 185, 129, 0.10);
+    --tg-state-cancelado-bg: rgba(239, 68, 68, 0.18);
+    --tg-state-cancelado-fg: #fca5a5;
+    --tg-state-cancelado-bg-tint: rgba(239, 68, 68, 0.10);
+
+    --tg-prio-baja-fg: #6b7280;
+    --tg-prio-media-fg: #facc15;
+    --tg-prio-alta-fg: #fb923c;
+    --tg-prio-urgente-fg: #f87171;
+
+    --tg-success: #34d399;
+  }
 }
 
 html, body {

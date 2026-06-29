@@ -6,7 +6,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getCliente, updateCliente, getTrabajosDeCliente } from "../api/trabajos";
 import type { Cliente } from "../api/trabajos";
-import { ESTADOS } from "../lib/constants";
+import { EstadoBadge } from "../lib/constants";
 import { Phone, MapPin, ChevronRight, ArrowLeft, MessageSquare } from "lucide-react";
 
 interface Props {
@@ -196,9 +196,7 @@ export default function ClienteDetailView({ clienteId, onBack, onTrabajoClick }:
                   style={{ background: "var(--tg-theme-secondary_bg_color)" }}>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate" style={{ color: "var(--tg-theme-text_color)" }}>{t.titulo}</p>
-                    <span className={`text-xs px-1.5 py-0.5 rounded-full ${(ESTADOS[t.estado] ?? ESTADOS.pendiente).color}`}>
-                      {(ESTADOS[t.estado] ?? ESTADOS.pendiente).label}
-                    </span>
+                    <EstadoBadge estado={t.estado} />
                   </div>
                   <ChevronRight className="h-4 w-4 flex-shrink-0" style={{ color: "var(--tg-theme-hint_color)" }} />
                 </button>

@@ -7,7 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getTrabajos, getEventos, getChecklistPendiente, getClientes } from "../api/trabajos";
 import type { Trabajo, CalendarioEvento } from "../api/trabajos";
 import {
-  ESTADOS, fmtTime, hoyISO,
+  EstadoBadge, fmtTime, hoyISO,
 } from "../lib/constants";
 import {
   Wrench, CheckSquare, Users, Calendar, ChevronRight,
@@ -56,7 +56,6 @@ function EventoMini({ evento }: { evento: CalendarioEvento }) {
 }
 
 function TrabajoRow({ trabajo, onClick }: { trabajo: Trabajo; onClick?: () => void }) {
-  const estado = ESTADOS[trabajo.estado] ?? ESTADOS.pendiente;
   return (
     <div
       className="flex items-center gap-3 p-3 rounded-lg cursor-pointer active:opacity-70"
@@ -67,10 +66,8 @@ function TrabajoRow({ trabajo, onClick }: { trabajo: Trabajo; onClick?: () => vo
         <p className="text-sm font-medium truncate" style={{ color: "var(--tg-theme-text_color)" }}>
           {trabajo.titulo}
         </p>
-        <div className="flex items-center gap-2 mt-0.5">
-          <span className={`text-xs px-1.5 py-0.5 rounded-full ${estado.color}`}>
-            {estado.label}
-          </span>
+        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+          <EstadoBadge estado={trabajo.estado} />
           {trabajo.cliente_nombre && (
             <span className="text-xs truncate" style={{ color: "var(--tg-theme-hint_color)" }}>
               {trabajo.cliente_nombre}

@@ -11,7 +11,7 @@ import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getChecklistPendiente, updateChecklistItem, addChecklistItem, getTrabajos } from "../api/trabajos";
 import type { ChecklistItem, Trabajo } from "../api/trabajos";
-import { ESTADOS, fmtDate } from "../lib/constants";
+import { EstadoBadge, fmtDate } from "../lib/constants";
 import {
   CheckSquare, ChevronRight, Plus, X, Calendar, Search,
 } from "lucide-react";
@@ -198,9 +198,7 @@ function NuevaTareaModal({ open, onClose, onCreated }: NuevaTareaModalProps) {
                             {t.titulo}
                           </p>
                           <div className="flex items-center gap-2 mt-0.5">
-                            <span className={`text-xs px-1.5 py-0.5 rounded-full ${(ESTADOS[t.estado] ?? ESTADOS.pendiente).color}`}>
-                              {(ESTADOS[t.estado] ?? ESTADOS.pendiente).label}
-                            </span>
+                            <EstadoBadge estado={t.estado} />
                             {t.cliente_nombre && (
                               <span className="text-xs truncate"
                                 style={{ color: "var(--tg-theme-hint_color)" }}>
@@ -540,11 +538,7 @@ export default function MisTareasView({ onTrabajoClick }: Props) {
                       style={{ color: "var(--tg-theme-text_color)" }}>
                       {g.trabajo.titulo}
                     </span>
-                    <span
-                      className={`text-xs px-1.5 py-0.5 rounded-full flex-shrink-0 ${(ESTADOS[g.trabajo.estado] ?? ESTADOS.pendiente).color}`}
-                    >
-                      {(ESTADOS[g.trabajo.estado] ?? ESTADOS.pendiente).label}
-                    </span>
+                    <EstadoBadge estado={g.trabajo.estado} />
                   </div>
                   <div className="flex items-center gap-2 mt-0.5">
                     {g.trabajo.cliente_nombre && (
