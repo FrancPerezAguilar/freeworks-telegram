@@ -283,9 +283,9 @@ function NuevoEventoModal({
             </div>
           </div>
 
-          {/* Fecha + Hora */}
-          <div className="grid grid-cols-2 gap-2">
-            <div>
+          {/* Fecha + Hora: la fecha necesita más ancho (formato DD/MM/YYYY) que la hora (HH:MM) */}
+          <div className="flex gap-2">
+            <div className="flex-[2]">
               <label className="text-xs font-medium mb-1 block" style={{ color: "var(--tg-theme-hint_color)" }}>
                 Fecha *
               </label>
@@ -296,7 +296,7 @@ function NuevoEventoModal({
                 style={inputStyle}
               />
             </div>
-            <div>
+            <div className="flex-1">
               <label className="text-xs font-medium mb-1 block" style={{ color: "var(--tg-theme-hint_color)" }}>
                 Hora
               </label>
@@ -310,8 +310,8 @@ function NuevoEventoModal({
           </div>
 
           {/* Duración + Cliente */}
-          <div className="grid grid-cols-2 gap-2">
-            <div>
+          <div className="flex gap-2">
+            <div className="flex-1">
               <label className="text-xs font-medium mb-1 block" style={{ color: "var(--tg-theme-hint_color)" }}>
                 Duración (min)
               </label>
@@ -324,7 +324,7 @@ function NuevoEventoModal({
                 style={inputStyle}
               />
             </div>
-            <div>
+            <div className="flex-[2]">
               <label className="text-xs font-medium mb-1 block" style={{ color: "var(--tg-theme-hint_color)" }}>
                 Cliente
               </label>
