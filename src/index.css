@@ -95,3 +95,28 @@ body {
   margin: 0;
   padding: 0;
 }
+
+/* Reset native date/time inputs — Safari/iOS WebView sets a hardcoded
+ * min-width (~150px) and an oversized calendar icon that breaks flexbox
+ * layouts in narrow modals. appearance: none + min-width: 0 fixes it. */
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"],
+input[type="month"],
+input[type="week"] {
+  -webkit-appearance: none;
+  appearance: none;
+  min-width: 0;
+  font-family: inherit;
+  /* Avoid iOS auto-zoom on focus by forcing ≥16px font-size */
+  font-size: max(14px, 16px);
+}
+
+/* Make the native calendar/clock icons less obtrusive and tighten them */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  opacity: 0.5;
+  cursor: pointer;
+  margin-left: -2px;
+  padding: 0;
+}
