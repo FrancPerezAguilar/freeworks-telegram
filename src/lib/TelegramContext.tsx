@@ -2,11 +2,13 @@
  * TelegramContext — Mini App detection + theme integration.
  *
  * - Detecta si la app corre dentro de Telegram (`window.Telegram.WebApp`)
- * - Expone: `isTelegram`, `webApp`, `user`, `theme`, `colorScheme`
- * - Al montar: `webApp.ready()`, `webApp.expand()`, aplica CSS vars del tema
+ * - Expone: `isTelegram`, `webApp`, `user`, `theme`, `colorScheme`,
+ *           `isFullscreen`, `exitFullscreen`
+ * - Al montar: `webApp.ready()`, `webApp.requestFullscreen()` (si está
+ *   disponible), fallback a `webApp.expand()`, aplica CSS vars del tema
  */
 
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
 // ── Tipos locales del SDK ─────────────────────────────────────
 
@@ -33,6 +35,10 @@ export interface WebApp {
   ready: () => void;
   expand: () => void;
   close: () => void;
+  /** Disponible desde Telegram Bot API 6.7+ (fullscreen real en Android/iOS) */
+  requestFullscreen?: () => void;
+  exitFullscreen?: () => void;
+  isFullscreen?: boolean;
   onEvent: (event: string, handler: () => void) => void;
   offEvent: (event: string, handler: () => void) => void;
 }
@@ -77,10 +83,13 @@ export interface TelegramContextValue {
   user: WebAppUser | null;
   theme: ThemeParams;
   colorScheme: "light" | "dark" | null;
+  isFullscreen: boolean;
+  exitFullscreen: () => void;
 }
 
 const TelegramContext = createContext<TelegramContextValue>({
   isTelegram: false, webApp: null, user: null, theme: {}, colorScheme: null,
+  isFullscreen: false, exitFullscreen: () => {},
 });
 
 export function TelegramProvider({ children }: { children: ReactNode }) {
@@ -88,6 +97,7 @@ export function TelegramProvider({ children }: { children: ReactNode }) {
   const [isTelegram, setIsTelegram] = useState(false);
   const [colorScheme, setColorScheme] = useState<"light" | "dark" | null>(null);
   const [theme, setTheme] = useState<ThemeParams>({});
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
     const tg = getWebApp();
@@ -101,8 +111,23 @@ export function TelegramProvider({ children }: { children: ReactNode }) {
     setIsTelegram(true);
     setColorScheme(tg.colorScheme ?? null);
     setTheme(tg.themeParams ?? {});
+    setIsFullscreen(tg.isFullscreen ?? false);
 
-    try { tg.ready(); tg.expand(); } catch { /* noop */ }
+    // 1) Avisar a Telegram de que estamos listos
+    try { tg.ready(); } catch { /* noop */ }
+
+    // 2) Fullscreen real (Telegram Bot API 6.7+, mobile only).
+    //    Si no está disponible, fallback a expand() para ocupar el máximo
+    //    posible del WebView.
+    try {
+      if (typeof tg.requestFullscreen === "function") {
+        tg.requestFullscreen();
+        setIsFullscreen(true);
+      } else {
+        tg.expand();
+      }
+    } catch { /* noop */ }
+
     applyThemeVars(tg.themeParams);
 
     const onThemeChange = () => {
@@ -111,6 +136,12 @@ export function TelegramProvider({ children }: { children: ReactNode }) {
       applyThemeVars(tg.themeParams);
     };
     try { tg.onEvent("themeChanged", onThemeChange); } catch { /* noop */ }
+
+    // Sincronizar estado de fullscreen si el usuario lo sale manualmente
+    const onFullscreenChange = () => {
+      setIsFullscreen(tg.isFullscreen ?? false);
+    };
+    try { tg.onEvent("fullscreenChanged", onFullscreenChange); } catch { /* noop */ }
 
     // Back button → go back or close
     const onBack = () => {
@@ -121,13 +152,21 @@ export function TelegramProvider({ children }: { children: ReactNode }) {
 
     return () => {
       try { tg.offEvent("themeChanged", onThemeChange); } catch { /* noop */ }
+      try { tg.offEvent("fullscreenChanged", onFullscreenChange); } catch { /* noop */ }
       try { tg.BackButton.offClick(onBack); } catch { /* noop */ }
     };
   }, []);
 
+  const exitFullscreen = useCallback(() => {
+    if (webApp?.exitFullscreen) {
+      try { webApp.exitFullscreen(); } catch { /* noop */ }
+    }
+  }, [webApp]);
+
   const value = useMemo<TelegramContextValue>(() => ({
-    isTelegram, webApp, user: webApp?.initDataUnsafe?.user ?? null, theme, colorScheme,
-  }), [isTelegram, webApp, theme, colorScheme]);
+    isTelegram, webApp, user: webApp?.initDataUnsafe?.user ?? null,
+    theme, colorScheme, isFullscreen, exitFullscreen,
+  }), [isTelegram, webApp, theme, colorScheme, isFullscreen, exitFullscreen]);
 
   return <TelegramContext.Provider value={value}>{children}</TelegramContext.Provider>;
 }
