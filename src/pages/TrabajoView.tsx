@@ -57,11 +57,12 @@ function Field({ label, value, onChange, onBlur, type = "text", multiline, place
       <div className="flex flex-col gap-0.5 cursor-pointer group" onClick={() => setEditing(true)}>
         <span className="text-xs font-medium" style={{ color: "var(--tg-theme-hint_color)" }}>{label}</span>
         <div className="flex items-center gap-1">
-          <Tag className={`text-sm py-1 px-2 rounded-md border border-transparent group-hover:border-gray-200 transition-colors ${multiline ? "whitespace-pre-wrap" : "truncate"}`}
+          <Tag className={`text-sm py-1 px-2 rounded-md tap-field-border transition-colors ${multiline ? "whitespace-pre-wrap" : "truncate"}`}
             style={{ color: isEmpty ? "var(--tg-theme-hint_color)" : "var(--tg-theme-text_color)", opacity: isEmpty ? 0.5 : 1, background: "var(--tg-theme-secondary_bg_color)" }}>
             {display}
           </Tag>
-          <span className="text-xs opacity-0 group-hover:opacity-30 flex-shrink-0" style={{ color: "var(--tg-theme-hint_color)" }}>✎</span>
+          {/* Icono ✎ siempre visible (señal "toca para editar" en móvil) */}
+          <span className="text-xs flex-shrink-0 opacity-40" style={{ color: "var(--tg-theme-hint_color)" }}>✎</span>
         </div>
       </div>
     );
@@ -90,11 +91,12 @@ function SelectField({ label, value, options, onChange, onBlur }: {
       <div className="flex flex-col gap-0.5 cursor-pointer group" onClick={() => setEditing(true)}>
         <span className="text-xs font-medium" style={{ color: "var(--tg-theme-hint_color)" }}>{label}</span>
         <div className="flex items-center gap-1">
-          <span className="text-sm py-1 px-2 rounded-md border border-transparent group-hover:border-gray-200 transition-colors truncate"
+          <span className="text-sm py-1 px-2 rounded-md tap-field-border transition-colors truncate"
             style={{ color: "var(--tg-theme-text_color)", background: "var(--tg-theme-secondary_bg_color)" }}>
             {options[value] ?? value}
           </span>
-          <span className="text-xs opacity-0 group-hover:opacity-30 flex-shrink-0" style={{ color: "var(--tg-theme-hint_color)" }}>✎</span>
+          {/* Icono ✎ siempre visible (señal "toca para editar" en móvil) */}
+          <span className="text-xs flex-shrink-0 opacity-40" style={{ color: "var(--tg-theme-hint_color)" }}>✎</span>
         </div>
       </div>
     );
@@ -197,11 +199,12 @@ function AddressAutocomplete({ calle, numero, municipio, provincia, onChange }: 
       <div className="flex flex-col gap-0.5 cursor-pointer group" onClick={() => setEditing(true)}>
         <span className="text-xs font-medium" style={{ color: "var(--tg-theme-hint_color)" }}>Dirección de obra</span>
         <div className="flex items-center gap-1">
-          <span className="text-sm py-1 px-2 rounded-md border border-transparent group-hover:border-gray-200 transition-colors truncate"
+          <span className="text-sm py-1 px-2 rounded-md tap-field-border transition-colors truncate"
             style={{ color: fullAddress ? "var(--tg-theme-text_color)" : "var(--tg-theme-hint_color)", opacity: fullAddress ? 1 : 0.5, background: "var(--tg-theme-secondary_bg_color)" }}>
             {fullAddress || "—"}
           </span>
-          <span className="text-xs opacity-0 group-hover:opacity-30 flex-shrink-0" style={{ color: "var(--tg-theme-hint_color)" }}>✎</span>
+          {/* Icono ✎ siempre visible (señal "toca para editar" en móvil) */}
+          <span className="text-xs flex-shrink-0 opacity-40" style={{ color: "var(--tg-theme-hint_color)" }}>✎</span>
         </div>
       </div>
     );
@@ -297,10 +300,11 @@ function ClienteSelector({ clienteId, clienteNombre, onChange }: {
         <span className="text-xs font-medium" style={{ color: "var(--tg-theme-hint_color)" }}>Cliente</span>
         <div className="flex items-center gap-1">
           <button onClick={() => setEditing(true)}
-            className="flex-1 text-left text-sm py-1 px-2 rounded-md border border-transparent hover:border-gray-200 transition-colors truncate group cursor-pointer"
+            className="flex-1 text-left text-sm py-1 px-2 rounded-md tap-field-border transition-colors truncate group cursor-pointer"
             style={{ color: clienteNombre ? "var(--tg-theme-text_color)" : "var(--tg-theme-hint_color)", opacity: clienteNombre ? 1 : 0.5, background: "var(--tg-theme-secondary_bg_color)" }}>
             {clienteNombre || "Sin cliente"}
-            <span className="inline-block ml-2 text-xs opacity-0 group-hover:opacity-30" style={{ color: "var(--tg-theme-hint_color)" }}>✎</span>
+            {/* Icono ✎ siempre visible (señal "toca para editar" en móvil) */}
+            <span className="inline-block ml-2 text-xs opacity-40" style={{ color: "var(--tg-theme-hint_color)" }}>✎</span>
           </button>
           {clienteId && (
             <button onClick={clear} className="p-1 rounded active:opacity-70" style={{ color: "var(--tg-theme-hint_color)" }}>✕</button>
@@ -503,7 +507,7 @@ function ComentariosSection({ trabajoId }: { trabajoId: string }) {
                 </p>
               </div>
               <button onClick={() => { deleteComentario(c.appwrite_id); queryClient.invalidateQueries({ queryKey: ["comentarios", trabajoId] }); }}
-                className="opacity-0 group-hover:opacity-100 p-0.5 flex-shrink-0" style={{ color: "var(--tg-theme-destructive_text_color)" }}>
+                className="tap-show p-0.5 flex-shrink-0" style={{ color: "var(--tg-theme-destructive_text_color)" }}>
                 <Trash2 className="h-3 w-3" />
               </button>
             </div>
@@ -590,7 +594,7 @@ function AdjuntosSection({ trabajoId }: { trabajoId: string }) {
                 )}
               </div>
               <button onClick={(ev) => { ev.stopPropagation(); deleteAdjunto(a.appwrite_id); queryClient.invalidateQueries({ queryKey: ["adjuntos", trabajoId] }); }}
-                className="absolute top-1.5 right-1.5 p-1 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute top-1.5 right-1.5 p-1 rounded-full bg-black/40 tap-show transition-opacity"
                 style={{ color: "white" }}>
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
@@ -649,7 +653,7 @@ function TiemposSection({ trabajoId }: { trabajoId: string }) {
                 <p className="text-xs" style={{ color: "var(--tg-theme-hint_color)" }}>{t.fecha}</p>
               </div>
               <button onClick={() => { deleteTiempo(t.appwrite_id); queryClient.invalidateQueries({ queryKey: ["tiempos", trabajoId] }); }}
-                className="opacity-0 group-hover:opacity-100 p-1" style={{ color: "var(--tg-theme-destructive_text_color)" }}>
+                className="tap-show p-1" style={{ color: "var(--tg-theme-destructive_text_color)" }}>
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
             </div>
@@ -695,7 +699,7 @@ function MaterialesSection({ trabajoId }: { trabajoId: string }) {
                 </p>
               </div>
               <button onClick={() => { deleteMaterialUsado(m.appwrite_id); queryClient.invalidateQueries({ queryKey: ["materiales", trabajoId] }); }}
-                className="opacity-0 group-hover:opacity-100 p-1" style={{ color: "var(--tg-theme-destructive_text_color)" }}>
+                className="tap-show p-1" style={{ color: "var(--tg-theme-destructive_text_color)" }}>
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
             </div>
@@ -817,7 +821,7 @@ function ChecklistSection({ trabajoId }: { trabajoId: string }) {
                   {/* Three-dot menu */}
                   <div className="relative">
                     <button onClick={() => setMenuOpen(menuOpen === item.id ? null : item.id)}
-                      className="p-1 rounded opacity-0 group-hover:opacity-100 active:opacity-100"
+                      className="p-1 rounded active:opacity-100"
                       style={{ color: "var(--tg-theme-text_color)", opacity: 0.4 }}>
                       <MoreHorizontal className="h-4 w-4" />
                     </button>

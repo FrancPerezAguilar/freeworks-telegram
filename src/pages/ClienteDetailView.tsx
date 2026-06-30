@@ -43,11 +43,12 @@ function Field({ label, value, onChange, onBlur, type = "text", multiline, place
       <div className="flex flex-col gap-0.5 cursor-pointer group" onClick={() => setEditing(true)}>
         <span className="text-xs font-medium" style={{ color: "var(--tg-theme-hint_color)" }}>{label}</span>
         <div className="flex items-center gap-1">
-          <Tag className={`text-sm py-1 px-2 rounded-md border border-transparent group-hover:border-gray-200 transition-colors ${multiline ? "whitespace-pre-wrap" : "truncate"}`}
+          <Tag className={`text-sm py-1 px-2 rounded-md tap-field-border transition-colors ${multiline ? "whitespace-pre-wrap" : "truncate"}`}
             style={{ color: isEmpty ? "var(--tg-theme-hint_color)" : "var(--tg-theme-text_color)", opacity: isEmpty ? 0.5 : 1, background: "var(--tg-theme-secondary_bg_color)" }}>
             {display}
           </Tag>
-          <span className="text-xs opacity-0 group-hover:opacity-30 flex-shrink-0" style={{ color: "var(--tg-theme-hint_color)" }}>✎</span>
+          {/* Icono ✎ siempre visible en móvil (señal "toca para editar"), sutil en desktop */}
+          <span className="text-xs flex-shrink-0 opacity-40" style={{ color: "var(--tg-theme-hint_color)" }}>✎</span>
         </div>
       </div>
     );

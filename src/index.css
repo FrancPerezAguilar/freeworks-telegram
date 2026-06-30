@@ -120,3 +120,69 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   margin-left: -2px;
   padding: 0;
 }
+
+/* ── Hover vs tap: ambos estados bien servidos ───────────────────
+ *
+ * Problema: el código usaba `opacity-0 group-hover:opacity-100` para mostrar
+ * controles (icono ✎, botón borrar, cerrar lightbox, 3-dot menu) solo al
+ * pasar el ratón. En móvil no existe hover, así que esos controles eran
+ * INVISIBLES y Franc no sabía que podía editar/borrar.
+ *
+ * Solución: dos utilities que se complementan.
+ *   - .tap-show:    oculta en desktop (hover disponible), muestra siempre en touch
+ *   - .tap-hide:    muestra siempre en desktop, oculta en touch (sin sentido ahí)
+ *
+ * `hover: none` cubre iOS / Android WebView (Telegram) — fiable.
+ * `hover: hover` cubre escritorio — solo aplica a devs/debugging en navegador.
+ */
+.tap-show {
+  /* En touch (default): visible siempre */
+  opacity: 1;
+}
+
+/* En escritorio con hover: oculto por defecto, aparece con group-hover */
+@media (hover: hover) {
+  .tap-show {
+    opacity: 0;
+    transition: opacity 0.15s ease;
+  }
+  .group:hover .tap-show,
+  [class*="group"]:hover .tap-show {
+    opacity: 1;
+  }
+}
+
+.tap-hide {
+  /* En touch (default): oculto completamente */
+  display: none;
+}
+
+@media (hover: hover) {
+  .tap-hide {
+    display: revert;
+  }
+}
+
+/* Borde de campos editables: visible en touch (señal de "toca para editar"),
+ * sutil en desktop hasta hacer hover */
+.tap-field-border {
+  border: 1px solid transparent;
+}
+@media (hover: hover) {
+  .tap-field-border {
+    /* En desktop sigue siendo transparente hasta el group-hover */
+    border-color: transparent;
+  }
+  .group:hover .tap-field-border {
+    border-color: rgba(128, 128, 128, 0.2);
+  }
+}
+
+/* Click feedback en touch — `active:` ya existe en muchos sitios.
+ * Este helper fuerza un flash sutil al tocar cualquier elemento clickable. */
+@media (hover: none) {
+  .tap-flash:active {
+    background-color: rgba(128, 128, 128, 0.1);
+    transition: background-color 0.1s;
+  }
+}
