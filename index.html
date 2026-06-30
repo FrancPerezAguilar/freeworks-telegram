@@ -5,6 +5,36 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Free Works</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script>
+      // ── MOCK de Telegram WebApp SOLO para QA en navegador ───────
+      // Actívalo con ?mock=franc|tecnico|intruso
+      // Útil para probar la pantalla de auth sin abrir Telegram.
+      // Este bloque NO afecta cuando se abre desde Telegram (entonces
+      // el SDK real reemplaza a window.Telegram antes de que React monte).
+      (function () {
+        const params = new URLSearchParams(location.search);
+        const mode = params.get('mock');
+        if (!mode) return;
+        const presets = {
+          franc:    { id: 6341670106, first_name: 'Franc',    last_name: 'Pérez', username: 'francperez' },
+          tecnico:  { id: 111111111, first_name: 'Técnico',  last_name: 'Demo',    username: 'tecnico' },
+          intruso:  { id: 999999999, first_name: 'Intruso',  last_name: 'X',       username: 'intruso' },
+        };
+        const u = presets[mode];
+        if (!u) return;
+        const userJson = JSON.stringify(u);
+        const initData = 'user=' + encodeURIComponent(userJson) + '&auth_date=1737000000&hash=mock' + mode;
+        const wa = {
+          initData, initDataUnsafe: { user: u },
+          colorScheme: 'light', themeParams: {},
+          BackButton: { show:()=>{}, hide:()=>{}, onClick:()=>{}, offClick:()=>{} },
+          ready:()=>{}, expand:()=>{}, close:()=>{}, onEvent:()=>{}, offEvent:()=>{},
+        };
+        // Sobrescribir ANTES de que monte la app (React lee window.Telegram)
+        window.Telegram = { WebApp: wa };
+        console.info('[mock-franc]', 'Telegram WebApp simulando', mode);
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

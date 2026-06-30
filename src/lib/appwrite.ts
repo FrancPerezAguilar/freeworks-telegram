@@ -1,40 +1,41 @@
+/**
+ * Cliente Appwrite único para la Mini App.
+ *
+ * Estrategia (Junio 2026, post-expiración API key con scope users.write):
+ *  - Usamos `setDevKey(API key)` directamente en el cliente.
+ *  - NO hacemos `POST /users/{id}/tokens` (no funciona con la key actual).
+ *  - NO creamos sesión de usuario real (no la necesitamos para esta app).
+ *  - Para crear documentos, los permisos usan `Role.any()` (lectura/escritura
+ *    global para esta Mini App de uso interno) + el admin de Franc
+ *    hardcodeado por las dudas.
+ *
+ * Trade-off consciente: cualquier persona con este bundle puede leer y escribir
+ * los datos de la app. Como solo la abre Franc desde Telegram (allowlist en
+ * config.ts), esto es aceptable. Si en el futuro se quiere abrir a terceros,
+ * migrar a Cloud Function + sesión real.
+ */
+
 import { Client, Databases, Account, Storage, type Models } from "appwrite";
-import { APPWRITE_CONFIG } from "../config";
+import { APPWRITE_CONFIG, ADMIN_USER_ID } from "../config";
 
-// ── Cliente servidor (API key) ───────────────────────────────
-// Para operaciones que requieren permisos elevados (users.*)
-
-const serverClient = new Client()
+const client = new Client()
   .setEndpoint(APPWRITE_CONFIG.endpoint)
   .setProject(APPWRITE_CONFIG.projectId)
   .setDevKey(APPWRITE_CONFIG.apiKey);
 
-/** Databases con API key — para consultas server-side */
-export const serverDb = new Databases(serverClient);
+/** Databases con API key — leer y escribir colecciones */
+export const db = new Databases(client);
 
-// ── Cliente de sesión (sin API key) ──────────────────────────
-// Recibe la sesión vía account.createSession(). Una vez autenticado,
-// todas las llamadas a databases/storage van con los permisos del usuario.
+/** Storage con API key — bucket de adjuntos */
+export const storage = new Storage(client);
 
-const sessionClient = new Client()
-  .setEndpoint(APPWRITE_CONFIG.endpoint)
-  .setProject(APPWRITE_CONFIG.projectId);
-
-/** Account — para login/sesión */
-export const account = new Account(sessionClient);
-
-/** Databases con sesión de usuario — usar tras authenticateWithTelegram() */
-export const db = new Databases(sessionClient);
-
-/** Storage con sesión de usuario — para subir adjuntos */
-export const storage = new Storage(sessionClient);
-
-/** Client expuesto para que telegramAuth pueda crear sesiones */
-export { sessionClient };
-
-// ── Re-export ─────────────────────────────────────────────────
+/** Account (no se usa actualmente para auth — queda exportado por compatibilidad) */
+export const account = new Account(client);
 
 export const DB = APPWRITE_CONFIG.databaseId;
+
+/** ID del operador/admin (Franc) — usado al crear permisos */
+export const OPERATOR_USER_ID = ADMIN_USER_ID;
 
 export type AppwriteDoc = Models.Document & Record<string, unknown>;
 

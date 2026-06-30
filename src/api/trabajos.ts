@@ -1,29 +1,25 @@
 /**
- * API calls para la Mini App — Appwrite SDK con sesión de usuario (db).
+ * API calls para la Mini App — Appwrite SDK con API key (setDevKey).
+ *
+ * Junio 2026: dejamos de usar sesiones de usuario porque POST /users/{id}/tokens
+ * falla (la API key actual no tiene scope users.write). Las queries y CRUD
+ * funcionan con setDevKey directamente.
+ *
+ * Documentos creados con Role.any() para que sean legibles/editables desde
+ * esta Mini App. Como solo Franc abre la app (allowlist en config.ts),
+ * no necesitamos permisos por usuario.
  */
 
 import { Query, Permission, Role } from "appwrite";
 import { db, DB, storage, normalizeDoc, type AppwriteDoc } from "../lib/appwrite";
 
-import { getCurrentUserId } from "../lib/telegramAuth";
-
-/** Genera permisos para el usuario actual + admin (Franc) */
+/** Genera permisos para los documentos creados desde la Mini App */
 async function getUserPerms(): Promise<string[]> {
-  const userId = await getCurrentUserId();
-  const base = userId ? [
-    Permission.read(Role.user(userId)),
-    Permission.update(Role.user(userId)),
-    Permission.delete(Role.user(userId)),
-  ] : [
+  return [
     Permission.read(Role.any()),
     Permission.update(Role.any()),
     Permission.delete(Role.any()),
   ];
-  // Añadir a Franc como admin en todos los docs
-  base.push(Permission.read(Role.user("6a3abbe6001bea1b9386")));
-  base.push(Permission.update(Role.user("6a3abbe6001bea1b9386")));
-  base.push(Permission.delete(Role.user("6a3abbe6001bea1b9386")));
-  return base;
 }
 
 // ── Tipos ─────────────────────────────────────────────────────

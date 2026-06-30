@@ -1,22 +1,42 @@
 /**
- * Configuración hardcodeada de Free Works.
- * Por ahora las credenciales viven aquí (no usamos .env). En el futuro se
- * migrarán a variables de entorno VITE_APPWRITE_*.
+ * Configuración de Free Works para Appwrite.
+ *
+ * Las credenciales se leen de variables de entorno VITE_APPWRITE_* en `.env.local`
+ * (no committeado) o `.env` (committeado solo si no contiene secretos).
+ *
+ * Para desarrollo rápido sin .env, se mantiene un fallback en este archivo.
  */
 
 export const APPWRITE_CONFIG = {
-  endpoint: "https://cloud.appwrite.io/v1",
-  projectId: "6a3a9bfd00036f813523",
-  databaseId: "freeworks",
-  // API key de servidor. En el futuro, el cliente NO debería llevar esto:
-  // las llamadas con permisos elevados deberían pasar por una Cloud Function.
-  // Por ahora la usamos desde el navegador para acelerar el desarrollo.
-  apiKey: "standard_976b2a93d1fab4af23fbc72d4327c419ea5508c9442af675d8456c37cf0d175d4378a047c06a9af3c7a8ea46934e30304c4b591cdd32324f1cd8cc74f1223d168e84b335da7a9c9a9a714d22931bde947d5bba24e8c3a5a1ea8941ac4c0fe7f49693ac1f68254bc9dce96c9bffa202dd66d9a3665494d5216ecc76f7c3fe9784",
+  endpoint: import.meta.env.VITE_APPWRITE_ENDPOINT ?? "https://cloud.appwrite.io/v1",
+  projectId: import.meta.env.VITE_APPWRITE_PROJECT_ID ?? "6a3a9bfd00036f813523",
+  databaseId: import.meta.env.VITE_APPWRITE_DATABASE_ID ?? "freeworks",
+  // API key de servidor. Se usa con setDevKey() para bypasear la necesidad de
+  // sesión de usuario y no depender de POST /users/{id}/tokens (que requiere
+  // scope 'users.write').
+  apiKey: import.meta.env.VITE_APPWRITE_API_KEY ?? "",
 };
 
 /**
- * Nombres de las 16 colecciones Appwrite que usa Free Works.
- * Mantener este listado sincronizado con la consola de Appwrite.
+ * Allowlist de Telegram IDs autorizados a usar la Mini App.
+ *
+ * Flujo: cuando la Mini App abre, lee `Telegram.WebApp.initDataUnsafe.user.id`
+ * y solo permite el acceso si está en este set. Si no está, rechaza la entrada.
+ *
+ * Para añadir un técnico/socio, añadir su Telegram ID numérico al array.
+ */
+export const ALLOWED_TELEGRAM_IDS: readonly number[] = [
+  6341670106, // Franc Pérez — admin
+] as const;
+
+/**
+ * IDs de Appwrite hardcodeados (operador/admin de la cuenta que se usa al
+ * crear documentos — siempre será Franc porque es el único autorizado).
+ */
+export const ADMIN_USER_ID = "6a3abbe6001bea1b9386";
+
+/**
+ * Nombres de las colecciones Appwrite.
  */
 export const COLLECTIONS = {
   clientes: "clientes",
@@ -35,6 +55,7 @@ export const COLLECTIONS = {
   comentarios: "comentarios",
   waitlist: "waitlist",
   adjuntos: "adjuntos",
+  userTelegram: "user_telegram",
 } as const;
 
 export type CollectionKey = keyof typeof COLLECTIONS;
