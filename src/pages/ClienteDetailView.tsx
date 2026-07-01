@@ -29,10 +29,30 @@ function Field({ label, value, onChange, onBlur, type = "text", multiline, place
   type?: string; multiline?: boolean; placeholder?: string;
 }) {
   const [editing, setEditing] = useState(false);
+  // Estado local: solo escribimos a Appwrite al confirmar (blur / Enter),
+  // nunca en cada keystroke — eso causaba lag, valor perdido y "bucle" en iOS WebView.
+  const [draft, setDraft] = useState(value);
   const ref = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
+
+  // Sincroniza el draft si el valor remoto cambia (otro tab, invalidación, etc.)
+  useEffect(() => { if (!editing) setDraft(value); }, [value, editing]);
+
   useEffect(() => {
-    if (editing && ref.current) { ref.current.focus(); if (!multiline) (ref.current as HTMLInputElement).select(); }
+    if (editing && ref.current) {
+      ref.current.focus();
+      if (!multiline) (ref.current as HTMLInputElement).select();
+    }
   }, [editing, multiline]);
+
+  const commit = useCallback(() => {
+    if (draft !== value) onChange(draft);
+    onBlur?.();
+  }, [draft, value, onChange, onBlur]);
+
+  const cancel = useCallback(() => {
+    setDraft(value); // descarta cambios
+    setEditing(false);
+  }, [value]);
 
   const display = value || placeholder || "—";
   const isEmpty = !value;
@@ -47,7 +67,6 @@ function Field({ label, value, onChange, onBlur, type = "text", multiline, place
             style={{ color: isEmpty ? "var(--tg-theme-hint_color)" : "var(--tg-theme-text_color)", opacity: isEmpty ? 0.5 : 1, background: "var(--tg-theme-secondary_bg_color)" }}>
             {display}
           </Tag>
-          {/* Icono ✎ siempre visible en móvil (señal "toca para editar"), sutil en desktop */}
           <span className="text-xs flex-shrink-0 opacity-40" style={{ color: "var(--tg-theme-hint_color)" }}>✎</span>
         </div>
       </div>
@@ -58,12 +77,22 @@ function Field({ label, value, onChange, onBlur, type = "text", multiline, place
   return (
     <div className="flex flex-col gap-0.5">
       <span className="text-xs font-medium" style={{ color: "var(--tg-theme-accent_text_color)" }}>{label}</span>
-      <Tag ref={ref as any} type={multiline ? undefined : type} value={value}
-        onChange={(e: any) => onChange(e.target.value)} onBlur={() => { setEditing(false); onBlur?.(); }}
-        onKeyDown={(e) => { if (e.key === "Escape") setEditing(false); }}
+      <Tag
+        ref={ref as any}
+        type={multiline ? undefined : type}
+        value={draft}
+        onChange={(e: any) => setDraft(e.target.value)}
+        onBlur={() => { setEditing(false); commit(); }}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") { e.preventDefault(); cancel(); }
+          else if (e.key === "Enter" && !multiline) { (e.target as HTMLInputElement).blur(); }
+        }}
         placeholder={placeholder ?? "—"}
         className="w-full bg-transparent text-sm py-1 px-2 rounded-md outline-none"
-        style={inputStyle} rows={multiline ? 2 : undefined} autoFocus />
+        style={inputStyle}
+        rows={multiline ? 2 : undefined}
+        autoFocus
+      />
     </div>
   );
 }
